@@ -58,7 +58,7 @@ String::String(const DynamicArray<t::Byte> &bytes) : string(reinterpret_cast<con
  */
 String::String(const WCHART *w_src, int limit_size)
 {
-	// Костыль
+	// Костыль, при чем очень хороший!
 	DynamicArray<t::Byte> tmpdata;
 	const WCHART *p = w_src;
 	bool limit_exceeded = false;
