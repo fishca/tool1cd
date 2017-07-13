@@ -519,7 +519,8 @@ int main(int argc, char* argv[])
 
 	if(commands.get_length() == 0)
 	{
-		cout << "cTool_1CD (c) awa 2009 - 2017" << endl << "Запусти cTool_1CD -h для справки" << endl;
+		//cout << "cTool_1CD (c) awa 2009 - 2017" << endl << "Запусти cTool_1CD -h для справки" << endl;
+		cout << "cTool_1CD (c) awa 2009 - 2017" << endl << "Run cTool_1CD -h for help" << endl;
 		return 0;
 	}
 
