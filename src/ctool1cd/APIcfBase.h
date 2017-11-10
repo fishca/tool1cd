@@ -10,24 +10,14 @@
 #include "Zip.h"
 #include "UZLib.h"
 
-#pragma comment (lib, "zlibstatic.lib")
+//#pragma comment (lib, "zlibstatic.lib")
 
-
-#ifndef _DELPHI_STRING_UNICODE
-	const char str_cfu[] = ".cfu";
-	const char str_cfe[] = ".cfe";
-	const char str_cf[]  = ".cf";
-	const char str_epf[] = ".epf";
-	const char str_erf[] = ".erf";
-	const char str_backslash[] = "\\";
-#else
-	const wchar_t str_cfu[] = L".cfu";
-	const wchar_t str_cfe[] = L".cfe";
-	const wchar_t str_cf[]  = L".cf";
-	const wchar_t str_epf[] = L".epf";
-	const wchar_t str_erf[] = L".erf";
-	const wchar_t str_backslash[] = L"\\";
-#endif
+const char str_cfu[] = ".cfu";
+const char str_cfe[] = ".cfe";
+const char str_cf[]  = ".cf";
+const char str_epf[] = ".epf";
+const char str_erf[] = ".erf";
+const char str_backslash[] = "\\";
 
 // массив для преобразования числа в шестнадцатиричную строку
 const char _BUFHEX[] = "0123456789abcdef";
