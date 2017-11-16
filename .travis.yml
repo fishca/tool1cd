@@ -1,9 +1,24 @@
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "dvQi9Oy/1rWno1KvSIl3gPHNuUKtY8TBzBp/VsS1Sh1EyT7x5nhKJDQ5NqSiVvq2g4/uOYUesnr/1ousVMqZmiD5sjv8nLMv9e4oog3lOhHa4KsMdXWJROe3HwTDjQsRWYp+4XVzDUC7tkYRtw6HAhi5bLRV9OmxNPfqfzsy7PbyOk1vaSmN7Ypx/y1Py8/9unh9SAOXYTNgeu0LsrZeO3qRynnalqPVOd8G7KL7URTnAjqXxJB0Pxiat7SFNoYDiBGb42ZX6C5afoA7/pvYdJ2pxRtmhp56appwLyQ1NAHUE4GcDLrX5Z2Stf7wTnntFExMDVTQfPfZYi9wT3nIrnAQDq15et1V439P3pFTs5eTosD/MLgrYEDW1ufAnOM1raKlBY+9SCl6bP2Pw5wrV6ehnAEYKPkS4GumM9N2QPKLVpruMdjxuGmPRM+7zgecuAfFZRxP58qmXOvVf38nuj2Mt5pxiKKxfHfeP1sG0nGXPPp72gXKcB34RiJ4xbJLuohIkoe0WVCQnPKfLrkH1/MXhyezAkEqsl8cQz0NWBvyI27q3jLlmq43vg7Sdi8wjW0w2jVfwhdlkS63Bsdr5SoGipQpHTRp7fo9TIWfqV5jKGXpt3jUA1lpnWUkYOcb35vZJrF1Ciir0h8DqJsEsbePf09qjxHTIm6OcZyJ4d8="
 dist: trusty
 sudo: required
 language: cpp
 compiler: gcc
 before_install:
+    - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
     - sudo apt-get -qq update
 install: sudo apt-get install -y cmake zlib1g-dev libboost-filesystem-dev libboost-system-dev libboost-regex-dev
 script:
     - cmake . && cmake --build .
+addons:
+  coverity_scan:
+    project:
+      name: "fishca/tool1cd"
+      description: "Build submitted via Travis CI"
+    notification_email: sergrud@mail.ru
+    # build_command_prepend: "./configure; make clean"
+    build_command:   "- cmake . && cmake --build ."
+    branch_pattern: coverity_scan
