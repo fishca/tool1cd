@@ -6,18 +6,28 @@
 #include <map>
 #include <set>
 #include <limits>
+#include<vector>
 
-#include "Zip.h"
 #include "UZLib.h"
 
-//#pragma comment (lib, "zlibstatic.lib")
+#pragma comment (lib, "zlibstatic.lib")
 
-const char str_cfu[] = ".cfu";
-const char str_cfe[] = ".cfe";
-const char str_cf[]  = ".cf";
-const char str_epf[] = ".epf";
-const char str_erf[] = ".erf";
-const char str_backslash[] = "\\";
+
+#ifndef _DELPHI_STRING_UNICODE
+	const char str_cfu[] = ".cfu";
+	const char str_cfe[] = ".cfe";
+	const char str_cf[]  = ".cf";
+	const char str_epf[] = ".epf";
+	const char str_erf[] = ".erf";
+	const char str_backslash[] = "\\";
+#else
+	const wchar_t str_cfu[] = L".cfu";
+	const wchar_t str_cfe[] = L".cfe";
+	const wchar_t str_cf[]  = L".cf";
+	const wchar_t str_epf[] = L".epf";
+	const wchar_t str_erf[] = L".erf";
+	const wchar_t str_backslash[] = L"\\";
+#endif
 
 // массив для преобразования числа в шестнадцатиричную строку
 const char _BUFHEX[] = "0123456789abcdef";
@@ -101,15 +111,15 @@ class v8file{
 	~v8file();
 	bool IsCatalog();
 	v8catalog* GetCatalog();
-	size_t GetFileLength();
-	size_t GetFileLength64();
+	int64_t GetFileLength();
+	int64_t GetFileLength64();
 
-	size_t Read(void* Buffer, size_t Start, size_t Length);
-	size_t Read(System::DynamicArray<System::t::Byte> Buffer, size_t Start, size_t Length);
+	int64_t Read(void* Buffer, int Start, int Length);
+	int64_t Read(std::vector<System::t::Byte> Buffer, int Start, int Length);
 
-	size_t Write(const void* Buffer, size_t Start, size_t Length);                           // дозапись/перезапись частично
-	size_t Write(System::DynamicArray<System::t::Byte> Buffer, size_t Start, size_t Length); // дозапись/перезапись частично
-	int64_t Write(const void* Buffer, size_t Length);                                  // перезапись целиком
+	int64_t Write(const void* Buffer, int Start, int Length);                           // дозапись/перезапись частично
+	int64_t Write(std::vector<System::t::Byte> Buffer, int Start, int Length); // дозапись/перезапись частично
+	int64_t Write(const void* Buffer, int Length);                                      // перезапись целиком
 	int64_t Write(TStream* Stream, int Start, int Length);                              // дозапись/перезапись частично
 	int64_t Write(TStream* Stream);                                                     // перезапись целиком
 
@@ -147,8 +157,8 @@ class v8catalog{
 	v8file* first; // первый файл в каталоге
 	v8file* last;  // последний файл в каталоге
 	std::map<String,v8file*> files; // Соответствие имен и файлов
-	size_t start_empty; // начало первого пустого блока
-	size_t page_size;   // размер страницы по умолчанию
+	int64_t start_empty; // начало первого пустого блока
+	int page_size;   // размер страницы по умолчанию
 	int version;     // версия
 	bool zipped;     // признак зазипованности файлов каталога
 	bool is_cfu;     // признак файла cfu (файл запакован deflate'ом)
@@ -159,15 +169,13 @@ class v8catalog{
 	bool is_emptymodified;
 	bool is_modified;
 
-	void free_block(size_t start);
+	void free_block(int start);
 
-	//size_t write_block(TStream* block, size_t start, bool use_page_size, size_t len = -1);       // возвращает адрес начала блока
-	size_t write_block(TStream* block, size_t start, bool use_page_size, size_t len = 0);       // возвращает адрес начала блока
-	size_t write_datablock(TStream* block, size_t start, bool _zipped = false, size_t len = 0); // возвращает адрес начала блока
+	int write_block(TStream* block, int start, bool use_page_size, int len = -1);       // возвращает адрес начала блока
+	int write_datablock(TStream* block, int start, bool _zipped = false, int len = -1); // возвращает адрес начала блока
 
 	TStream* read_datablock(int start);
-	//int64_t get_nextblock(int64_t start);
-	size_t get_nextblock(size_t start);
+	int64_t get_nextblock(int64_t start);
 
 	bool is_destructed; // признак, что работает деструктор
 	bool flushed;       // признак, что происходит сброс
@@ -204,16 +212,16 @@ class TV8FileStream : public TStream
 protected:
 	v8file* file;
 	bool own;
-	size_t pos;
+	int64_t pos;
 public:
 	TV8FileStream(v8file* f, bool ownfile = false);
 	virtual ~TV8FileStream();
-	virtual size_t Read(void *Buffer, size_t Count);
-	virtual size_t Read(System::DynamicArray<System::t::Byte> Buffer, size_t Offset, size_t Count);
-	virtual size_t Write(const void *Buffer, size_t Count);
-	virtual size_t Write(const System::DynamicArray<System::t::Byte> Buffer, size_t Offset, size_t Count);
-	virtual size_t Seek(size_t Offset, System::Word Origin);
-	virtual size_t Seek(const size_t Offset, const TSeekOrigin Origin);
+	virtual int64_t Read(void *Buffer, int64_t Count) override;
+	virtual int Read(std::vector<System::t::Byte> Buffer, int Offset, int Count);
+	virtual int64_t Write(const void *Buffer, int64_t Count) override;
+	virtual int Write(const std::vector<System::t::Byte> Buffer, int Offset, int Count);
+	virtual int Seek(int Offset, System::Word Origin);
+	virtual int64_t Seek(const int64_t Offset, TSeekOrigin Origin) override;
 };
 
 #endif
