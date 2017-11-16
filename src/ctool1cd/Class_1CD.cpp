@@ -296,40 +296,24 @@ T_1CD::T_1CD(String _filename, MessageRegistrator* mess, bool _monopoly)
 	else if(ver == "8.1.0.0")
 	{
 		version = db_ver::ver8_1_0_0;
-		#ifdef PublicRelease
-		readonly = true;
-		#else
 		readonly = !_monopoly;
-		#endif
 	}
 	else if(ver == "8.2.0.0")
 	{
 		version = db_ver::ver8_2_0_0;
-		#ifdef PublicRelease
-		readonly = true;
-		#else
 		readonly = !_monopoly;
-		#endif
 	}
 	else
 #endif
 		 if(ver == "8.2.14.0")
 	{
 		version = db_ver::ver8_2_14_0;
-		#ifdef PublicRelease
-		readonly = true;
-		#else
 		readonly = !_monopoly;
-		#endif
 	}
 	else if(ver == "8.3.8.0")
 	{
 		version = db_ver::ver8_3_8_0;
-		#ifdef PublicRelease
-		readonly = true;
-		#else
 		readonly = !_monopoly;
-		#endif
 		pagesize = cont->pagesize;
 	}
 	else
@@ -518,7 +502,7 @@ db_ver T_1CD::getversion()
 }
 
 //---------------------------------------------------------------------------
-bool T_1CD::save_config(String _filename)
+bool T_1CD::save_config(String _filename) // TODO: переписать сохранение конфигурации базы данных на boost::filesystem
 {
 	if(!cs_config) cs_config = new ConfigStorageTableConfig(get_files_config());
 	if(!cs_config->getready()) return false;
@@ -526,7 +510,7 @@ bool T_1CD::save_config(String _filename)
 }
 
 //---------------------------------------------------------------------------
-bool T_1CD::save_configsave(String _filename)
+bool T_1CD::save_configsave(String _filename) // TODO: переписать сохранение основной конфигурации на boost::filesystem
 {
 	if(!cs_configsave) cs_configsave = new ConfigStorageTableConfigSave(get_files_config(), get_files_configsave());
 	if(!cs_configsave->getready()) return false;
@@ -763,7 +747,7 @@ void T_1CD::add_supplier_config(table_file* tf)
 }
 
 //---------------------------------------------------------------------------
-bool T_1CD::save_supplier_configs(uint32_t numcon, const String& _filename)
+bool T_1CD::save_supplier_configs(uint32_t numcon, const String& _filename) // TODO: переписать сохранение конфигурации поставщика на boost::filesystem
 {
 	TFileStream* _fs;
 	container_file* f;
@@ -834,7 +818,6 @@ void T_1CD::flush()
 
 //---------------------------------------------------------------------------
 
-#ifndef PublicRelease
 void T_1CD::find_lost_objects()
 {
 	uint32_t i;
@@ -861,7 +844,6 @@ void T_1CD::find_lost_objects()
 	}
 	msreg_m.AddMessage("Поиск потерянных объектов завершен", MessageState::Succesfull);
 }
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 bool T_1CD::test_stream_format()
@@ -1531,7 +1513,6 @@ bool T_1CD::recursive_test_stream_format(v8catalog* cat, String path)
 }
 
 //---------------------------------------------------------------------------
-#ifndef PublicRelease
 bool T_1CD::create_table(String path)
 {
 	TFileStream* f;
@@ -1756,7 +1737,6 @@ bool T_1CD::create_table(String path)
 	delete root;
 	return true;
 }
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 void T_1CD::set_readonly(bool ro)
@@ -2063,11 +2043,10 @@ bool T_1CD::test_list_of_tables()
 	return result;
 }
 
-#ifndef PublicRelease
 //---------------------------------------------------------------------------
 bool T_1CD::replaceTREF(String mapfile)
 {
-	DynamicArray<int32_t> map; // динамический массив соответствия номеров
+	vector<int32_t> map; // динамический массив соответствия номеров
 	int32_t i,j,m;
 	int32_t k, l;
 	uint32_t ii, kk;
@@ -2091,7 +2070,7 @@ bool T_1CD::replaceTREF(String mapfile)
 		if(m < j) m = j;
 	}
 
-	map.set_length(m + 1);
+	map.resize(m + 1);
 
 	for(k = 0; k < list->Count(); k++)
 	{
@@ -2246,7 +2225,7 @@ void T_1CD::find_and_create_lost_tables()
 	char buf[8];
 	v8object* v8obj;
 	bool block_is_find;
-	DynamicArray<uint32_t> losttables;
+	vector<uint32_t> losttables;
 	char* b;
 
 	numlosttables = 0;
@@ -2274,7 +2253,7 @@ void T_1CD::find_and_create_lost_tables()
 						v8obj->getdata(buf, 0, 4);
 						if(memcmp(buf, SIG_TABDESCR, 4) == 0)
 						{
-							if(losttables.get_length() <= numlosttables) losttables.set_length(losttables.get_length() + 1024);
+							if(losttables.size() <= numlosttables) losttables.resize(losttables.size() + 1024);
 							losttables[numlosttables++] = i;
 						}
 					}
@@ -2317,51 +2296,28 @@ void T_1CD::find_and_create_lost_tables()
 }
 
 //---------------------------------------------------------------------------
-void T_1CD::find_and_save_lost_objects()
+void T_1CD::find_and_save_lost_objects(boost::filesystem::path &lost_objects)
 {
-	uint32_t i;
-	char buf[8];
-	v8object* v8obj;
-	bool block_is_find;
-	bool dir_created;
-	String path;
-
-	dir_created = false;
-	path = filename.SubString(1, filename.LastDelimiter("\\"));
-	path += "LostObjects\\";
-
-	for(i = 1; i < length; i++)
-	{
+	for(uint32_t i = 1; i < length; i++) {
+		char buf[8];
 		getblock(buf, i, 8);
-		if(memcmp(buf, SIG_OBJ, 8) == 0)
-		{
-			block_is_find = false;
-			for(v8obj = v8object::get_first(); v8obj; v8obj = v8obj->get_next())
-			{
-				if(v8obj->get_block_number() == i)
-				{
+		if(memcmp(buf, SIG_OBJ, 8) == 0) {
+			bool block_is_find = false;
+			for(auto v8obj = v8object::get_first(); v8obj; v8obj = v8obj->get_next()) {
+				if(v8obj->get_block_number() == i) {
 					block_is_find = true;
 					break;
 				}
 			}
-			if(!block_is_find)
-			{
-				if(!dir_created)
-				{
-					CreateDir(path);
-					dir_created = true;
-				}
-				v8obj = new v8object(this, i);
-				v8obj->savetofile(path + "block" + i);
-				delete v8obj;
+			if(!block_is_find) {
+				unique_ptr<v8object> find_v8obj(new v8object(this, i));
+				find_v8obj->savetofile(lost_objects.string() + "block" + i);
 			}
 		}
 	}
 	msreg_m.AddMessage("Поиск и сохранение потерянных объектов завершен", MessageState::Succesfull);
 
 }
-
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 // Если не удалось получить версию, возвращается 0, иначе возвращается положительное число
@@ -2523,7 +2479,6 @@ bool T_1CD::save_depot_config(const String& _filename, int32_t ver)
 	uint32_t configVerMajor, configVerMinor;
 	TStream* in;
 	TStream* out;
-	TStream* st;
 	PackDirectory pack_directory;
 	v8catalog* cat;
 	v8catalog* cath;
@@ -3296,7 +3251,7 @@ bool T_1CD::save_part_depot_config(const String& _filename, int32_t ver_begin, i
 	bool hasext;
 	char emptyimage[8];
 	char verid[16];
-	uint32_t i, k;
+	uint32_t i;
 	int32_t v, res, lastver, n;
 	String s, ss, sp, sn, se;
 	depot_ver depotVer;
@@ -3310,16 +3265,9 @@ bool T_1CD::save_part_depot_config(const String& _filename, int32_t ver_begin, i
 	std::vector<_packdata> packdates;
 	TSearchRec srec;
 	PackDirectory pack_directory;
-	/*
-	_packdata pd;
-	_packdata* pdr;
-	*/
-	int64_t packlen;
 	v8catalog* cat;
-	// String cath;
 	TFileStream* f;
-	String __filename;
-
+	
 	union
 	{
 		GUID guid;
@@ -3627,7 +3575,6 @@ bool T_1CD::save_part_depot_config(const String& _filename, int32_t ver_begin, i
 						{
 							ok = false;
 							deletesobj = false;
-							packlen = 0;
 							rec = rech2 + fldh_objdata->offset + 1;
 							if(inreaded)
 							{
@@ -3745,7 +3692,6 @@ bool T_1CD::save_part_depot_config(const String& _filename, int32_t ver_begin, i
 								if(datapacked)
 								{
 									ok = false;
-									packlen = 0;
 									deletesobj = false;
 									frec = rece + flde_extdata->offset;
 									if(memcmp(emptyimage, frec, 8))
@@ -3887,8 +3833,6 @@ bool T_1CD::save_part_depot_config(const String& _filename, int32_t ver_begin, i
 	return true;
 }
 
-
-#ifndef PublicRelease
 //---------------------------------------------------------------------------
 // Проверка и восстановление таблицы размещения файла DATA переденной таблицы
 // Проверка записей происходит по тестовому шаблону, созданному из описания полей
@@ -4125,8 +4069,6 @@ bool T_1CD::test_block_by_template(uint32_t testblock, char* tt, uint32_t num, i
 	return true;
 }
 
-#endif //#ifdef PublicRelease
-
 //---------------------------------------------------------------------------
 TableFiles* T_1CD::get_files_config()
 {
@@ -4253,6 +4195,3 @@ String T_1CD::pagemaprec_presentation(pagemaprec& pmr)
 		default: return String("??? неизвестный тип страницы ???");
 	}
 }
-
-
-

@@ -10,24 +10,14 @@
 #include "Zip.h"
 #include "UZLib.h"
 
-#pragma comment (lib, "zlibstatic.lib")
+//#pragma comment (lib, "zlibstatic.lib")
 
-
-#ifndef _DELPHI_STRING_UNICODE
-	const char str_cfu[] = ".cfu";
-	const char str_cfe[] = ".cfe";
-	const char str_cf[]  = ".cf";
-	const char str_epf[] = ".epf";
-	const char str_erf[] = ".erf";
-	const char str_backslash[] = "\\";
-#else
-	const wchar_t str_cfu[] = L".cfu";
-	const wchar_t str_cfe[] = L".cfe";
-	const wchar_t str_cf[]  = L".cf";
-	const wchar_t str_epf[] = L".epf";
-	const wchar_t str_erf[] = L".erf";
-	const wchar_t str_backslash[] = L"\\";
-#endif
+const char str_cfu[] = ".cfu";
+const char str_cfe[] = ".cfe";
+const char str_cf[]  = ".cf";
+const char str_epf[] = ".epf";
+const char str_erf[] = ".erf";
+const char str_backslash[] = "\\";
 
 // массив для преобразования числа в шестнадцатиричную строку
 const char _BUFHEX[] = "0123456789abcdef";
@@ -37,6 +27,9 @@ const char _BLOCK_HEADER_TEMPLATE[] = "\r\n00000000 00000000 00000000 \r\n";
 const char _EMPTY_CATALOG_TEMPLATE[16] = {'\xff','\xff','\xff','\x7f',0,2,0,0,0,0,0,0,0,0,0,0};
 
 const int32_t LAST_BLOCK = std::numeric_limits<int>::max();
+
+const int64_t EPOCH_START_WIN = 504911232000000;
+
 
 //---------------------------------------------------------------------------
 struct v8header_struct{

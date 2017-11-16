@@ -12,9 +12,7 @@
 
 extern Registrator msreg_g;
 #ifndef getcfname
-#ifndef console
 extern TMultiReadExclusiveWriteSynchronizer* tr_syn;
-#endif
 #endif
 
 const uint32_t BLOB_RECORD_LEN = 256;
@@ -117,9 +115,7 @@ void Table::init(int32_t block_descr)
 	numrecords_found = 0;
 	recordsindex = NULL;
 
-#ifndef PublicRelease
 	edit = false;
-#endif //#ifdef PublicRelease
 	ch_rec = NULL;
 	added_numrecords = 0;
 
@@ -1065,16 +1061,12 @@ uint32_t Table::get_added_numrecords()
 //---------------------------------------------------------------------------
 char* Table::getrecord(uint32_t phys_numrecord, char* buf)
 {
-	#ifndef console
 	#ifndef getcfname
 	tr_syn->BeginWrite();
 	#endif
-	#endif
 	char* b = file_data->getdata(buf, phys_numrecord * recordlen, recordlen);
-	#ifndef console
 	#ifndef getcfname
 	tr_syn->EndWrite();
-	#endif
 	#endif
 	return b;
 }
@@ -1429,7 +1421,7 @@ bool Table::export_to_xml(String _filename, bool blob_to_file, bool unpack)
 					{
 						if(s.GetLength()) s += "_";
 						s += fields[i]->name;
-                    }
+					}
 					if(rc)
 					{
 						s += "_";
@@ -1467,15 +1459,10 @@ int64_t Table::get_fileoffset(uint32_t phys_numrecord)
 //---------------------------------------------------------------------------
 bool Table::get_edit()
 {
-#ifndef PublicRelease
 	return edit;
-#else
-	return false;
-#endif //#ifdef PublicRelease
 }
 //---------------------------------------------------------------------------
 
-#ifndef PublicRelease
 void Table::begin_edit()
 {
 	if(edit) return;
@@ -2001,7 +1988,6 @@ void Table::set_rec_type(uint32_t phys_numrecord, changed_rec_type crt)
 		}
 	}
 }
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 char* Table::get_edit_record(uint32_t phys_numrecord, char* rec)
@@ -2031,8 +2017,6 @@ uint32_t Table::get_phys_numrec(int32_t ARow, Index* cur_index)
 		return 0;
 	}
 
-
-#ifndef PublicRelease
 	if(edit)
 	{
 		if((uint32_t)ARow > log_numrecords + added_numrecords)
@@ -2046,7 +2030,6 @@ uint32_t Table::get_phys_numrec(int32_t ARow, Index* cur_index)
 		}
 		if((uint32_t)ARow > log_numrecords) return ARow - 1 - log_numrecords + phys_numrecords;
 	}
-#endif //#ifdef PublicRelease
 
 	if((uint32_t)ARow > log_numrecords)
 	{
@@ -2059,17 +2042,13 @@ uint32_t Table::get_phys_numrec(int32_t ARow, Index* cur_index)
 	if(cur_index) numrec = cur_index->get_numrec(ARow - 1);
 	else
 	{
-		#ifndef console
-		#ifndef getcfname
+	#ifndef getcfname
 		tr_syn->BeginRead();
-		#endif
-		#endif
+	#endif
 		numrec = recordsindex[ARow - 1];
-		#ifndef console
-		#ifndef getcfname
+	#ifndef getcfname
 		tr_syn->EndRead();
-		#endif
-		#endif
+	#endif
 	}
 
 	return numrec;
@@ -2109,7 +2088,6 @@ void Table::refresh_descr_table()
 
 }
 
-#ifndef PublicRelease
 //---------------------------------------------------------------------------
 void Table::delete_data_record(uint32_t phys_numrecord)
 {
@@ -2769,8 +2747,6 @@ char* Table::get_record_template_test()
 	return res;
 }
 
-#endif //#ifdef PublicRelease
-
 //---------------------------------------------------------------------------
 // заполнить recordsindex не динамически
 void Table::fillrecordsindex()
@@ -2779,8 +2755,8 @@ void Table::fillrecordsindex()
 	int32_t j;
 	char* rec;
 
-    if(recordsindex_complete) return;
-    recordsindex = new uint32_t [phys_numrecords];
+	if(recordsindex_complete) return;
+	recordsindex = new uint32_t [phys_numrecords];
 	rec = new char[recordlen];
 
 	j = 0;

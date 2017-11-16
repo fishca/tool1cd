@@ -59,7 +59,7 @@ uint32_t Index::get_numrecords()
 {
 	if(!start) return 0;
 	if(!recordsindex_complete) create_recordsindex();
-	return recordsindex.GetLength();
+	return recordsindex.size();
 }
 
 //---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ void Index::create_recordsindex()
 	curlen = *(int16_t*)(buf + 2);
 	if(curlen)
 	{
-		recordsindex.SetLength(tbase->file_data->getlen() / tbase->recordlen);
+		recordsindex.resize(tbase->file_data->getlen() / tbase->recordlen);
 		bool is_leaf = buf[0] & 0x2;
 		while(!is_leaf)
 		{
@@ -107,6 +107,7 @@ void Index::create_recordsindex()
 			curblock = 	reverse_byte_order(curblock);
 			if(version >= db_ver::ver8_3_8_0) curblock *= pagesize;
 			file_index->getdata(buf, curblock, pagesize);
+
 			is_leaf = buf[0] & 0x2;
 		}
 
@@ -124,21 +125,20 @@ void Index::create_recordsindex()
 				rbuf += rlen;
 				if(curindex % 10000 == 0) msreg_g.Status(readindex + curindex);
 			}
-			if(curblock == 0xffffffff) break;
+			if(curblock == 0xffffffff) break; // FIXME: разобраться литерал 0xffffffff == UINT_MAX, а тут uint64_t curblock
 			if(version >= db_ver::ver8_3_8_0) curblock *= pagesize;
 			file_index->getdata(buf, curblock, pagesize);
 		}
-		recordsindex.SetLength(curindex);
+		recordsindex.resize(curindex);
 	}
 
 	recordsindex_complete = true;
 	delete[] buf;
-	tbase->log_numrecords = recordsindex.GetLength();
+	tbase->log_numrecords = recordsindex.size();
 	msreg_g.Status("");
 }
 
 //---------------------------------------------------------------------------
-#ifndef PublicRelease
 void Index::dump_recursive(v8object* file_index, TFileStream* f, int32_t level, uint64_t curblock)
 {
 	unsigned char bf[3];
@@ -292,7 +292,6 @@ void Index::dump_recursive(v8object* file_index, TFileStream* f, int32_t level, 
 
 	delete[] buf;
 }
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 uint32_t Index::get_rootblock()
@@ -327,7 +326,6 @@ uint32_t Index::get_length()
 }
 
 //---------------------------------------------------------------------------
-#ifndef PublicRelease
 void Index::dump(String _filename)
 {
 	TFileStream* f;
@@ -361,7 +359,6 @@ void Index::dump(String _filename)
 
 	delete f;
 }
-#endif //#ifdef PublicRelease
 
 //---------------------------------------------------------------------------
 char* Index::unpack_leafpage(uint64_t page_offset, uint32_t& number_indexes)
@@ -586,7 +583,6 @@ bool Index::pack_leafpage(char* unpack_index, uint32_t number_indexes, char* pag
 }
 
 //---------------------------------------------------------------------------
-#ifndef PublicRelease
 void Index::calcRecordIndex(const char* rec, char* indexBuf)
 {
 	int32_t i, j, k;
@@ -1161,6 +1157,3 @@ void Index::write_index_record(const uint32_t phys_numrecord, const char* index_
 	delete[] page;
 
 }
-#endif //#ifdef PublicRelease
-
-
