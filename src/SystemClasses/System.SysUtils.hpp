@@ -72,12 +72,6 @@ struct TSearchRec {
 	int     ExcludeAttr;
 };
 
-int  FindFirst(const String &Path, int Attr, TSearchRec &rec);
-int  FindNext(TSearchRec &rec);
-void FindClose(TSearchRec &rec);
-
-void CreateGUID(TGUID &guid);
-
 String ExtractFileExt(const String &filename);
 
 } // SysUtils

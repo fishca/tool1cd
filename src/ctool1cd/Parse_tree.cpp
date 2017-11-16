@@ -4,8 +4,6 @@
 
 #include <boost/regex.hpp>
 
-//#pragma package(smart_init)
-
 const boost::regex exp_number("^-?\\d+$");
 const boost::regex exp_number_exp("^-?\\d+(\\.?\\d*)?((e|E)-?\\d+)?$");
 const boost::regex exp_guid("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
@@ -14,8 +12,7 @@ const boost::regex exp_binary2("^[0-9a-zA-Z\\+=\\r\\n\\/]+$");
 const boost::regex exp_link("^[0-9]+:[0-9a-fA-F]{32}$");
 const boost::regex exp_binary_d("^#data:[0-9a-zA-Z\\+=\\r\\n\\/]*$");
 
-extern MessageRegistrator* msreg;
-#define error if(msreg) msreg->AddError
+extern Registrator msreg_g;
 
 //---------------------------------------------------------------------------
 tree::tree(const String& _value, const node_type _type, tree* _parent)
@@ -67,13 +64,13 @@ tree* tree::add_child(const String& _value, const node_type _type)
 //---------------------------------------------------------------------------
 tree* tree::add_child()
 {
-	return new tree("", nd_empty, this);
+	return new tree("", node_type::nd_empty, this);
 }
 
 //---------------------------------------------------------------------------
 tree* tree::add_node()
 {
-	return new tree("", nd_empty, this->parent);
+	return new tree("", node_type::nd_empty, this->parent);
 }
 
 //---------------------------------------------------------------------------
@@ -182,28 +179,28 @@ void tree::outtext(String& text)
 			t = t->next;
 			if(t) text += ",";
 		}
-		if(lt == nd_list) text += "\r\n";
+		if(lt == node_type::nd_list) text += "\r\n";
 		text += "}";
 	}
 	else
 	{
 		switch(type)
 		{
-			case nd_string:
+			case node_type::nd_string:
 				text += "\"";
 				//_ReplaceAll << rfReplaceAll;
 				(_ReplaceAll << rfReplaceAll);
 				text += StringReplace(value, "\"", "\"\"", _ReplaceAll);
 				text += "\"";
 				break;
-			case nd_number:
-			case nd_number_exp:
-			case nd_guid:
-			case nd_list:
-			case nd_binary:
-			case nd_binary2:
-			case nd_link:
-			case nd_binary_d:
+			case node_type::nd_number:
+			case node_type::nd_number_exp:
+			case node_type::nd_guid:
+			case node_type::nd_list:
+			case node_type::nd_binary:
+			case node_type::nd_binary2:
+			case node_type::nd_link:
+			case node_type::nd_binary_d:
 				text += value;
 				break;
 			default:
@@ -226,18 +223,43 @@ String tree::path()
 	return p;
 }
 
+
 //---------------------------------------------------------------------------
 node_type classification_value(const String& value)
 {
-	if(value.Length() == 0) return nd_empty;
-	if(regex_match(value.c_str(), exp_number)) return nd_number;
-	if(regex_match(value.c_str(), exp_number_exp)) return nd_number_exp;
-	if(regex_match(value.c_str(), exp_guid)) return nd_guid;
-	if(regex_match(value.c_str(), exp_binary)) return nd_binary;
-	if(regex_match(value.c_str(), exp_link)) return nd_link;
-	if(regex_match(value.c_str(), exp_binary2)) return nd_binary2;
-	if(regex_match(value.c_str(), exp_binary_d)) return nd_binary_d;
-	return nd_unknown;
+	if(value.Length() == 0) {
+		return node_type::nd_empty;
+	}
+
+	if(regex_match(value.c_str(), exp_number)) {
+		return node_type::nd_number;
+	}
+
+	if(regex_match(value.c_str(), exp_number_exp)) {
+		return node_type::nd_number_exp;
+	}
+
+	if(regex_match(value.c_str(), exp_guid)) {
+		return node_type::nd_guid;
+	}
+
+	if(regex_match(value.c_str(), exp_binary)) {
+		return node_type::nd_binary;
+	}
+
+	if(regex_match(value.c_str(), exp_link)) {
+		return node_type::nd_link;
+	}
+
+	if(regex_match(value.c_str(), exp_binary2)) {
+		return node_type::nd_binary2;
+	}
+
+	if(regex_match(value.c_str(), exp_binary_d)) {
+		return node_type::nd_binary_d;
+	}
+
+	return node_type::nd_unknown;
 }
 
 tree* parse_1Cstream(TStream* str, const String& path)
@@ -263,7 +285,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 
 	__curvalue__ = new TStringBuilder;
 
-	ret = new tree("", nd_list, NULL);
+	ret = new tree("", node_type::nd_list, NULL);
 	t = ret;
 
 	reader = new TStreamReader(str, true);
@@ -288,14 +310,16 @@ tree* parse_1Cstream(TStream* str, const String& path)
 						state = s_string;
 						break;
 					case L'{':
-						t = new tree("", nd_list, t);
+						t = new tree("", node_type::nd_list, t);
 						break;
 					case L'}':
-						if(t->get_first()) t->add_child("", nd_empty);
+						if(t->get_first()) {
+							t->add_child("", node_type::nd_empty);
+						}
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -304,7 +328,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 						state = s_delimitier;
 						break;
 					case L',':
-						t->add_child("", nd_empty);
+						t->add_child("", node_type::nd_empty);
 						break;
 					default:
 						__curvalue__->Clear();
@@ -328,7 +352,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -336,7 +360,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 						}
 						break;
 					default:
-						if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+						msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 							"Символ", sym,
 							"Код символа", tohex(sym),
 							"Путь", path);
@@ -358,7 +382,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 				}
 				else
 				{
-					t->add_child(__curvalue__->ToString(), nd_string);
+					t->add_child(__curvalue__->ToString(), node_type::nd_string);
 					switch(sym)
 					{
 						case L' ': // space
@@ -374,7 +398,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 							t = t->get_parent();
 							if(!t)
 							{
-								if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+								msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 									"Позиция", i,
 									"Путь", path);
 								delete ret;
@@ -383,7 +407,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 							state = s_delimitier;
 							break;
 						default:
-							if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+							msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 								"Символ", sym,
 								"Код символа", tohex(sym),
 								"Путь", path);
@@ -398,23 +422,27 @@ tree* parse_1Cstream(TStream* str, const String& path)
 					case L',':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+						if(nt == node_type::nd_unknown) {
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 							"Значение", curvalue,
 							"Путь", path);
+						}
 						t->add_child(curvalue, nt);
 						state = s_value;
 						break;
 					case L'}':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+						if(nt == node_type::nd_unknown) {
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 							"Значение", curvalue,
 							"Путь", path);
+						}
 						t->add_child(curvalue, nt);
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -428,7 +456,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 				}
 				break;
 			default:
-				if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный режим разбора.",
+				msreg_g.AddError("Ошибка формата потока. Неизвестный режим разбора.",
 					"Режим разбора", tohex(state),
 					"Путь", path);
 				delete ret;
@@ -441,15 +469,19 @@ tree* parse_1Cstream(TStream* str, const String& path)
 	{
 		curvalue = __curvalue__->ToString();
 		nt = classification_value(curvalue);
-		if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+		if(nt == node_type::nd_unknown) {
+			msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 			"Значение", curvalue,
 			"Путь", path);
+		}
 		t->add_child(curvalue, nt);
 	}
-	else if(state == s_quote_or_endstring) t->add_child(__curvalue__->ToString(), nd_string);
+	else if(state == s_quote_or_endstring) {
+		t->add_child(__curvalue__->ToString(), node_type::nd_string);
+	}
 	else if(state != s_delimitier)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Незавершенное значение",
+		msreg_g.AddError("Ошибка формата потока. Незавершенное значение",
 			"Режим разбора", tohex(state),
 			"Путь", path);
 		delete ret;
@@ -458,7 +490,7 @@ tree* parse_1Cstream(TStream* str, const String& path)
 
 	if(t != ret)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
+		msreg_g.AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
 			"Путь", path);
 		delete ret;
 		return NULL;
@@ -491,7 +523,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 
 	__curvalue__ = new TStringBuilder;
 
-	ret = new tree("", nd_list, NULL);
+	ret = new tree("", node_type::nd_list, NULL);
 	t = ret;
 
 	for(i = 1; i <= len; i++)
@@ -514,14 +546,16 @@ tree* parse_1Ctext(const String& text, const String& path)
 						state = s_string;
 						break;
 					case '{':
-						t = new tree("", nd_list, t);
+						t = new tree("", node_type::nd_list, t);
 						break;
 					case '}':
-						if(t->get_first()) t->add_child("", nd_empty);
+						if(t->get_first()) {
+							t->add_child("", node_type::nd_empty);
+						}
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -530,7 +564,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 						state = s_delimitier;
 						break;
 					case ',':
-						t->add_child("", nd_empty);
+						t->add_child("", node_type::nd_empty);
 						break;
 					default:
 						__curvalue__->Clear();
@@ -554,7 +588,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -562,7 +596,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 						}
 						break;
 					default:
-						if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+						msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 							"Символ", sym,
 							"Код символа", tohex(sym),
 							"Путь", path);
@@ -584,7 +618,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 				}
 				else
 				{
-					t->add_child(__curvalue__->ToString(), nd_string);
+					t->add_child(__curvalue__->ToString(), node_type::nd_string);
 					switch(sym)
 					{
 						case ' ': // space
@@ -600,7 +634,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 							t = t->get_parent();
 							if(!t)
 							{
-								if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+								msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 									"Позиция", i,
 									"Путь", path);
 								delete ret;
@@ -609,7 +643,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 							state = s_delimitier;
 							break;
 						default:
-							if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+							msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 								"Символ", sym,
 								"Код символа", tohex(sym),
 								"Путь", path);
@@ -624,23 +658,27 @@ tree* parse_1Ctext(const String& text, const String& path)
 					case ',':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+						if(nt == node_type::nd_unknown) {
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 							"Значение", curvalue,
 							"Путь", path);
+						}
 						t->add_child(curvalue, nt);
 						state = s_value;
 						break;
 					case '}':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+						if(nt == node_type::nd_unknown) {
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 							"Значение", curvalue,
 							"Путь", path);
+						}
 						t->add_child(curvalue, nt);
 						t = t->get_parent();
 						if(!t)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							delete ret;
@@ -654,7 +692,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 				}
 				break;
 			default:
-				if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный режим разбора.",
+				msreg_g.AddError("Ошибка формата потока. Неизвестный режим разбора.",
 					"Режим разбора", tohex(state),
 					"Путь", path);
 				delete ret;
@@ -667,15 +705,19 @@ tree* parse_1Ctext(const String& text, const String& path)
 	{
 		curvalue = __curvalue__->ToString();
 		nt = classification_value(curvalue);
-		if(nt == nd_unknown) if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+		if(nt == node_type::nd_unknown) {
+			msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 			"Значение", curvalue,
 			"Путь", path);
+		}
 		t->add_child(curvalue, nt);
 	}
-	else if(state == s_quote_or_endstring) t->add_child(__curvalue__->ToString(), nd_string);
+	else if(state == s_quote_or_endstring) {
+		t->add_child(__curvalue__->ToString(), node_type::nd_string);
+	}
 	else if(state != s_delimitier)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Незавершенное значение",
+		msreg_g.AddError("Ошибка формата потока. Незавершенное значение",
 			"Режим разбора", tohex(state),
 			"Путь", path);
 		delete ret;
@@ -684,7 +726,7 @@ tree* parse_1Ctext(const String& text, const String& path)
 
 	if(t != ret)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
+		msreg_g.AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
 			"Путь", path);
 		delete ret;
 		return NULL;
@@ -746,7 +788,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 					case L'}':
 						if(level <= 0)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							ret = false;
@@ -775,7 +817,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 					case L'}':
 						if(level <= 0)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							ret = false;
@@ -783,7 +825,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 						level--;
 						break;
 					default:
-						if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+						msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 							"Символ", sym,
 							"Код символа", tohex(sym),
 							"Путь", path);
@@ -819,7 +861,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 						case L'}':
 							if(level <= 0)
 							{
-								if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+								msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 									"Позиция", i,
 									"Путь", path);
 								ret = false;
@@ -828,7 +870,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 							state = s_delimitier;
 							break;
 						default:
-							if(msreg) msreg->AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
+							msreg_g.AddError("Ошибка формата потока. Ошибочный символ в режиме ожидания разделителя.",
 								"Символ", sym,
 								"Код символа", tohex(sym),
 								"Путь", path);
@@ -843,9 +885,9 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 					case L',':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown)
+						if(nt == node_type::nd_unknown)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 								"Значение", curvalue,
 								"Путь", path);
 							ret = false;
@@ -855,16 +897,16 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 					case L'}':
 						curvalue = __curvalue__->ToString();
 						nt = classification_value(curvalue);
-						if(nt == nd_unknown)
+						if(nt == node_type::nd_unknown)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+							msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 								"Значение", curvalue,
 								"Путь", path);
 							ret = false;
 						}
 						if(level <= 0)
 						{
-							if(msreg) msreg->AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
+							msreg_g.AddError("Ошибка формата потока. Лишняя закрывающая скобка }.",
 								"Позиция", i,
 								"Путь", path);
 							ret = false;
@@ -878,7 +920,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 				}
 				break;
 			default:
-				if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный режим разбора.",
+				msreg_g.AddError("Ошибка формата потока. Неизвестный режим разбора.",
 					"Режим разбора", tohex(state),
 					"Путь", path);
 				ret = false;
@@ -890,9 +932,9 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 	{
 		curvalue = __curvalue__->ToString();
 		nt = classification_value(curvalue);
-		if(nt == nd_unknown)
+		if(nt == node_type::nd_unknown)
 		{
-			if(msreg) msreg->AddError("Ошибка формата потока. Неизвестный тип значения.",
+			msreg_g.AddError("Ошибка формата потока. Неизвестный тип значения.",
 				"Значение", curvalue,
 				"Путь", path);
 			ret = false;
@@ -904,7 +946,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 	}
 	else if(state != s_delimitier)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Незавершенное значение",
+		msreg_g.AddError("Ошибка формата потока. Незавершенное значение",
 			"Режим разбора", tohex(state),
 			"Путь", path);
 		ret = false;
@@ -912,7 +954,7 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 
 	if(level > 0)
 	{
-		if(msreg) msreg->AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
+		msreg_g.AddError("Ошибка формата потока. Не хватает закрывающих скобок } в конце текста разбора.",
 			"Путь", path);
 		ret = false;
 	}
@@ -925,7 +967,11 @@ bool test_parse_1Ctext(TStream* str, const String& path)
 String outtext(tree* t)
 {
 	String text;
-	if(t) if(t->get_first()) t->get_first()->outtext(text);
+	if(t) {
+		if(t->get_first()) {
+			t->get_first()->outtext(text);
+		}
+	}
 	return text;
 }
 

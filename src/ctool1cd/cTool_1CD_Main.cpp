@@ -1,4 +1,4 @@
-﻿#pragma hdrstop
+#pragma hdrstop
 
 #include <stdio.h>
 #include <boost/regex.hpp>
@@ -8,33 +8,48 @@
 
 #include <iostream>
 #include <System.IOUtils.hpp>
-#include "Zip.h"
-
+#include <vector>
 
 #include "cTool_1CD_Main.h"
 #include "ParseCommandLine.h"
 #include "ErrorCode.h"
 #include "Messenger.h"
+#include "APIcfBase.h"
+#include "Zip.h"
 
 using namespace std;
 
 TMultiReadExclusiveWriteSynchronizer* tr_syn = new TMultiReadExclusiveWriteSynchronizer();
 
 //---------------------------------------------------------------------------
-MessageRegistrator* msreg;
 const int TEMP_BUFFER_SIZE = 4096;
 char temp[TEMP_BUFFER_SIZE];
+
+Registrator msreg_g;
 
 //---------------------------------------------------------------------------
 bool IsTrueString(const String &str)
 {
 	String s = str.LowerCase();
-	return s.Compare("1") == 0 || s.Compare("y") == 0 || s.Compare("yes") || s.Compare("д") || s.Compare("да") == 0;
+	return s.Compare("1") == 0 || s.Compare("y") == 0 || s.Compare("yes") == 0 || s.Compare("д") == 0 || s.Compare("да") == 0;
+}
+
+bool directory_exists(boost::filesystem::path& check_path, Messenger& mess) {
+	if (!boost::filesystem::exists(check_path)) {
+		mess.AddMessage_("Каталог не существует.", MessageState::Error, "Каталог", check_path.string());
+		return false;
+	}
+	else if (!boost::filesystem::is_directory(check_path)) {
+		mess.AddMessage_("Указанный путь не является каталогом.", MessageState::Error, "Каталог", check_path.string());
+		return false;
+	}
+
+	return true;
 }
 
 //---------------------------------------------------------------------------
 //cmd_export_all_to_xml
-void T1CD_cmd_export_all_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_export_all_to_xml(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess, bool ActionXMLSaveBLOBToFileChecked, bool ActionXMLUnpackBLOBChecked)
 {
 	Table* tbl;
 
@@ -52,12 +67,9 @@ void T1CD_cmd_export_all_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& me
 			boost::filesystem::path root_path(static_cast<string>(pc.param1));
 			boost::filesystem::path filetable = root_path / static_cast<string>(tbl->getname() + ".xml");
 
-			bool ActionXMLSaveBLOBToFileChecked = IsTrueString(pc.param1);
-			bool ActionXMLUnpackBLOBChecked     = IsTrueString(pc.param1);
-
 			tbl->export_to_xml(filetable.string(), ActionXMLSaveBLOBToFileChecked, ActionXMLUnpackBLOBChecked);
 
-			mess.AddMessage_("Выполнен экспорт таблицы в файл.", msSuccesfull, "Таблица", tbl->getname(), "Файл", filetable.string());
+			mess.AddMessage_("Выполнен экспорт таблицы в файл.", MessageState::Succesfull, "Таблица", tbl->getname(), "Файл", filetable.string());
 		}
 	}
 	else
@@ -66,7 +78,7 @@ void T1CD_cmd_export_all_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& me
 
 //---------------------------------------------------------------------------
 //cmd_export_to_xml
-void T1CD_cmd_export_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_export_to_xml(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess, bool ActionXMLSaveBLOBToFileChecked, bool ActionXMLUnpackBLOBChecked)
 {
 	boost::regex* expr;
 	Table* tbl;
@@ -128,11 +140,8 @@ void T1CD_cmd_export_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
 
 				boost::filesystem::path filetable = root_path / static_cast<string>(tbl->getname() + ".xml");
 
-				bool ActionXMLSaveBLOBToFileChecked = IsTrueString(pc.param1);
-				bool ActionXMLUnpackBLOBChecked     = IsTrueString(pc.param1);
-
 				tbl->export_to_xml(filetable.string(), ActionXMLSaveBLOBToFileChecked, ActionXMLUnpackBLOBChecked);
-				mess.AddMessage_("Выполнен экспорт таблицы в файл.", msSuccesfull, "Таблица", tbl->getname(), "Файл", filetable.string());
+				mess.AddMessage_("Выполнен экспорт таблицы в файл.", MessageState::Succesfull, "Таблица", tbl->getname(), "Файл", filetable.string());
 			}
 		}
 
@@ -142,7 +151,7 @@ void T1CD_cmd_export_to_xml(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
 		mess.AddError("Попытка выгрузки таблиц в XML без открытой базы.");
 } //T1CD_cmd_export_to_xml
 
-void T1CD_cmd_export_to_binary(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_export_to_binary(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (!base1CD.is_open()) {
 		mess.AddError("Попытка выгрузки таблиц без открытой базы.");
@@ -199,13 +208,13 @@ void T1CD_cmd_export_to_binary(T_1CD& base1CD, ParsedCommand& pc, Messenger& mes
 				tbl->fillrecordsindex();
 			}
 			tbl->export_table(root_path.string());
-			mess.AddMessage_("Выполнен экспорт таблицы в файл.", msSuccesfull, "Таблица", tbl->getname(), "Каталог", root_path.string());
+			mess.AddMessage_("Выполнен экспорт таблицы в файл.", MessageState::Succesfull, "Таблица", tbl->getname(), "Каталог", root_path.string());
 		}
 	}
 
 } // T1CD_cmd_export_to_binary
 
-void T1CD_cmd_import_from_binary(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_import_from_binary(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (!base1CD.is_open()) {
 		mess.AddError("Попытка загрузки таблиц без открытой базы.");
@@ -262,7 +271,7 @@ void T1CD_cmd_import_from_binary(T_1CD& base1CD, ParsedCommand& pc, Messenger& m
 				tbl->fillrecordsindex();
 			}
 			tbl->import_table(root_path.string());
-			mess.AddMessage_("Выполнен импорт таблицы из файла.", msSuccesfull, "Таблица", tbl->getname(), "Каталог", root_path.string());
+			mess.AddMessage_("Выполнен импорт таблицы из файла.", MessageState::Succesfull, "Таблица", tbl->getname(), "Каталог", root_path.string());
 		}
 	}
 
@@ -271,27 +280,25 @@ void T1CD_cmd_import_from_binary(T_1CD& base1CD, ParsedCommand& pc, Messenger& m
 
 //---------------------------------------------------------------------------
 //cmd_save_config
-void T1CD_cmd_save_config(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_config(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (base1CD.is_open())
 	{
 		boost::filesystem::path cfpath(static_cast<string>(pc.param1));
-		if (!boost::iequals(cfpath.extension().string(), ".cf"))
+		if (!boost::iequals(cfpath.extension().string(), str_cf))
 		{
-			if (!boost::filesystem::exists(cfpath))
-			{
-				mess.AddMessage_("Каталог не существует.", msError, "Каталог", cfpath.string());
+			if (!directory_exists(cfpath, mess)) {
 				return;
 			}
-			cfpath /= "dbcf.cf";
+			cfpath /= "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
 		}
 		if (base1CD.save_config(cfpath.string()))
 		{
-			mess.AddMessage_("Сохранение конфигурации базы данных завершено.", msSuccesfull, "Файл", cfpath.string());
+			mess.AddMessage_("Сохранение конфигурации базы данных завершено.", MessageState::Succesfull, "Файл", cfpath.string());
 		}
 		else
 		{
-			mess.AddMessage_("Не удалось сохранить конфигурацию базы данных.", msError, "Файл", cfpath.string());
+			mess.AddMessage_("Не удалось сохранить конфигурацию базы данных.", MessageState::Error, "Файл", cfpath.string());
 		}
 	}
 	else
@@ -303,24 +310,22 @@ void T1CD_cmd_save_config(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
 
 //---------------------------------------------------------------------------
 //cmd_save_configsave
-void T1CD_cmd_save_configsave(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_configsave(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (base1CD.is_open())
 	{
 		boost::filesystem::path cfpath(static_cast<string>(pc.param1));
-		if (!boost::iequals(cfpath.extension().string(), ".cf"))
+		if (!boost::iequals(cfpath.extension().string(), str_cf))
 		{
-			if (!boost::filesystem::exists(cfpath))
-			{
-				mess.AddMessage_("Каталог не существует.", msError, "Каталог", cfpath.string());
+			if (!directory_exists(cfpath, mess)) {
 				return;
 			}
-			cfpath /= "cf.cf";
+			cfpath /= "cf.cf"; // FIXME: заменить "cf.cf" константой
 		}
 		if (base1CD.save_configsave(cfpath.string()))
-			mess.AddMessage_("Сохранение основной конфигурации завершено.", msSuccesfull, "Файл", cfpath.string());
+			mess.AddMessage_("Сохранение основной конфигурации завершено.", MessageState::Succesfull, "Файл", cfpath.string());
 		else
-			mess.AddMessage_("Не удалось сохранить основную конфигурацию.", msError, "Файл", cfpath.string());
+			mess.AddMessage_("Не удалось сохранить основную конфигурацию.", MessageState::Error, "Файл", cfpath.string());
 	}
 	else
 		mess.AddError("Попытка выгрузки основной конфигурации без открытой базы.");
@@ -329,61 +334,79 @@ void T1CD_cmd_save_configsave(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess
 
 //---------------------------------------------------------------------------
 //cmd_save_vendors_configs
-void T1CD_cmd_save_vendors_configs(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_vendors_configs(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
-	if (base1CD.is_open())
-	{
+	if (base1CD.is_open()) {
+		boost::filesystem::path param_path(static_cast<string>(pc.param1));
+		if(!directory_exists(param_path, mess)) {
+			return;
+		}
+
 		base1CD.find_supplier_configs();
-		for (size_t n = 0; n < base1CD.supplier_configs.size(); n++)
-		{
-			String f = pc.param1 + "\\" + base1CD.supplier_configs[n].name + " " + base1CD.supplier_configs[n].version + ".cf";
-			if (base1CD.save_supplier_configs(n, f))
-				mess.AddMessage_("Сохранение конфигурации поставщика завершено.", msSuccesfull, "Файл", f);
-			else
-				mess.AddMessage_("Не удалось сохранить конфигурацию поставщика.", msError, "Файл", f);
+		for (size_t n = 0; n < base1CD.supplier_configs.size(); n++) {
+			String file_name = base1CD.supplier_configs[n].name + " " + base1CD.supplier_configs[n].version + str_cf;
+			boost::filesystem::path cfpath = param_path / static_cast<string>(file_name);
+			if (base1CD.save_supplier_configs(n, cfpath.string())) {
+				mess.AddMessage_("Сохранение конфигурации поставщика завершено.", MessageState::Succesfull, "Файл", cfpath.string());
+			}
+			else {
+				mess.AddMessage_("Не удалось сохранить конфигурацию поставщика.", MessageState::Error, "Файл", cfpath.string());
+			}
 		}
 	}
-	else
+	else {
 		mess.AddError("Попытка выгрузки конфигураций поставщиков без открытой базы.");
+	}
 } // T1CD_cmd_save_vendors_configs
 
 //---------------------------------------------------------------------------
 //cmd_save_all_configs
-void T1CD_cmd_save_all_configs(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_all_configs(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (base1CD.is_open())
 	{
-		String f = pc.param1 + "\\dbcf.cf";
+		boost::filesystem::path param_path(static_cast<string>(pc.param1));
+		if(!directory_exists(param_path, mess)) {
+			return;
+		}
 
-		if (base1CD.save_config(f))
-			mess.AddMessage_("Сохранение конфигурации базы данных завершено.", msSuccesfull, "Файл", f);
-		else
-			mess.AddMessage_("Не удалось сохранить конфигурацию базы данных.", msError, "Файл", f);
+		boost::filesystem::path dbpath = param_path / "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
+		if (base1CD.save_config(dbpath.string())) {
+			mess.AddMessage_("Сохранение конфигурации базы данных завершено.", MessageState::Succesfull, "Файл", dbpath.string());
+		}
+		else {
+			mess.AddMessage_("Не удалось сохранить конфигурацию базы данных.", MessageState::Error, "Файл", dbpath.string());
+		}
 
-		f = pc.param1 + "\\cf.cf";
-		if (base1CD.save_configsave(f))
-			mess.AddMessage_("Сохранение основной конфигурации завершено.", msSuccesfull, "Файл", f);
-		else
-			mess.AddMessage_("Не удалось сохранить основную конфигурацию.", msError, "Файл", f);
+		boost::filesystem::path cfpath = param_path / "cf.cf"; // FIXME: заменить "cf.cf" константой
+		if (base1CD.save_configsave(cfpath.string())) {
+			mess.AddMessage_("Сохранение основной конфигурации завершено.", MessageState::Succesfull, "Файл", cfpath.string());
+		}
+		else {
+			mess.AddMessage_("Не удалось сохранить основную конфигурацию.", MessageState::Error, "Файл", cfpath.string());
+		}
 
 		base1CD.find_supplier_configs();
-		for (size_t n = 0; n < base1CD.supplier_configs.size(); n++)
-		{
-			f = pc.param1 + "\\" + base1CD.supplier_configs[n].name + " " + base1CD.supplier_configs[n].version + ".cf";
-			if (base1CD.save_supplier_configs(n, f))
-				mess.AddMessage_("Сохранение конфигурации поставщика завершено.", msSuccesfull, "Файл", f);
-			else
-				mess.AddMessage_("Не удалось сохранить конфигурацию поставщика.", msError, "Файл", f);
+		for (size_t n = 0; n < base1CD.supplier_configs.size(); n++) {
+			String file_name = base1CD.supplier_configs[n].name + " " + base1CD.supplier_configs[n].version + str_cf;
+			boost::filesystem::path supplier_path = param_path / static_cast<string>(file_name);
+			if (base1CD.save_supplier_configs(n, supplier_path.string())) {
+				mess.AddMessage_("Сохранение конфигурации поставщика завершено.", MessageState::Succesfull, "Файл", supplier_path.string());
+			}
+			else {
+				mess.AddMessage_("Не удалось сохранить конфигурацию поставщика.", MessageState::Error, "Файл", supplier_path.string());
+			}
 		}
 	}
-	else
+	else {
 		mess.AddError("Попытка выгрузки всех конфигураций без открытой базы.");
+	}
 
 } // T1CD_cmd_save_all_configs
 
 //---------------------------------------------------------------------------
 //cmd_save_depot_config
-void T1CD_cmd_save_depot_config(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_depot_config(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
 	if (!base1CD.is_open())
 	{
@@ -418,79 +441,92 @@ void T1CD_cmd_save_depot_config(T_1CD& base1CD, ParsedCommand& pc, Messenger& me
 
 	cfpath = boost::filesystem::absolute(cfpath);
 
-	if (!boost::iequals(cfpath.extension().string(), ".cf"))
+	if (!boost::iequals(cfpath.extension().string(), str_cf))
 	{
-		if (!boost::filesystem::exists(cfpath))
-		{
-			mess.AddMessage_("Каталог не существует.", msError, "Каталог", cfpath.string());
+		if (!directory_exists(cfpath, mess)) {
 			return;
 		}
-		cfpath /= static_cast<string>(String(string("v") + version_number + string(".cf")));
+		cfpath /= static_cast<string>(String(string("v") + version_number + string(str_cf)));
 	}
 	if (base1CD.save_depot_config(cfpath.string(), version_number))
-		mess.AddMessage_("Сохранение конфигурации хранилища завершено.", msSuccesfull, "Файл", cfpath.string());
+		mess.AddMessage_("Сохранение конфигурации хранилища завершено.", MessageState::Succesfull, "Файл", cfpath.string());
 	else
-		mess.AddMessage_("Не удалось сохранить конфигурацию хранилища.", msError, "Файл", cfpath.string());
+		mess.AddMessage_("Не удалось сохранить конфигурацию хранилища.", MessageState::Error, "Файл", cfpath.string());
 
 } // T1CD_cmd_save_depot_config
 
 //---------------------------------------------------------------------------
 // cmd_save_depot_config_part
-void T1CD_cmd_save_depot_config_part(T_1CD& base1CD, ParsedCommand& pc, Messenger& mess)
+void T1CD_cmd_save_depot_config_part(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess)
 {
-	if (!base1CD.is_open())
-	{
+	if (!base1CD.is_open()) {
 		mess.AddError("Попытка выгрузки файлов конфигурации хранилища без открытой базы.");
 		return;
 	}
-	if (!base1CD.is_depot)
-	{
+	if (!base1CD.is_depot) {
 		mess.AddError("Попытка выгрузки файлов конфигурации хранилища из базы, не являющейся хранилищем конфигурации.");
 		return;
 	}
-	String f = pc.param1;
-	String v;
-	int j, k;
 
-	k = f.Pos(":");
-	if (k)
-	{
-		v = f.SubString(k + 1, f.Length() - k);
-		f = f.SubString(1, k - 1);
-		j = f.ToIntDef(0);
-		k = v.ToIntDef(0);
+	String version_number_param = pc.param1;
+
+	int32_t begin_version = 0;
+	int32_t end_version = 0;
+
+	int32_t splitter = version_number_param.Pos(":");
+	if (splitter) {
+		end_version = version_number_param
+				.SubString(splitter + 1, version_number_param.Length() - splitter)
+				.ToIntDef(0);
+		begin_version = version_number_param
+				.SubString(1, splitter - 1)
+				.ToIntDef(0);
 	}
-	else
-	{
-		j = f.ToIntDef(0);
-		k = j;
+	else {
+		begin_version = version_number_param.ToIntDef(0);
+		end_version = begin_version;
 	}
 
-	j = base1CD.get_ver_depot_config(j);
-	if (!j)
-	{
-		mess.AddError("Запрошенной версии конфигурации нет в хранилище конфигурации.", "Версия", j);
+	auto version_exists = [&] (int32_t ver) {
+		if (!ver) {
+			mess.AddError("Запрошенной версии конфигурации нет в хранилище конфигурации.", "Версия", ver);
+			return false;
+		}
+		return true;
+	};
+
+	begin_version = base1CD.get_ver_depot_config(begin_version);
+	if(!version_exists(begin_version)) { return; }
+
+	end_version = base1CD.get_ver_depot_config(end_version);
+	if(!version_exists(end_version)) { return; }
+
+	boost::filesystem::path save_path(static_cast<string>(pc.param2));
+	if (!boost::filesystem::exists(save_path)) {
+		boost::filesystem::create_directory(save_path);
+	}
+	else if (!boost::filesystem::is_directory(save_path)) {
+		mess.AddMessage_("Указанный путь не является каталогом.", MessageState::Error, "Каталог", save_path.string());
 		return;
 	}
 
-	k = base1CD.get_ver_depot_config(k);
-	if (!k)
-	{
-		mess.AddError("Запрошенной версии конфигурации нет в хранилище конфигурации.", "Версия", k);
-		return;
+	if (base1CD.save_part_depot_config(save_path.string(), begin_version, end_version)) {
+		mess.AddMessage_("Сохранение файлов конфигурации хранилища завершено.", MessageState::Succesfull, "Файл", save_path.string());
 	}
-
-	f = pc.param2;
-	f = System::Ioutils::TPath::GetFullPath(f);
-	if (!DirectoryExists(f))
-		System::Ioutils::TDirectory::CreateDirectory(f);
-	if (base1CD.save_part_depot_config(f, j, k))
-		mess.AddMessage_("Сохранение файлов конфигурации хранилища завершено.", msSuccesfull, "Файл", f);
-	else
-		mess.AddMessage_("Не удалось сохранить файлы конфигурации хранилища.", msError, "Файл", f);
-
+	else {
+		mess.AddMessage_("Не удалось сохранить файлы конфигурации хранилища.", MessageState::Error, "Файл", save_path.string());
+	}
 } // T1CD_cmd_save_depot_config_part
 
+void T1CD_cmd_find_and_save_lost_objects(T_1CD& base1CD, const ParsedCommand& pc, Messenger& mess) {
+
+	boost::filesystem::path lost_objects(static_cast<string>(pc.param1));
+	if (!directory_exists(lost_objects, mess)) {
+		return;
+	}
+
+	base1CD.find_and_save_lost_objects(lost_objects);
+} // T1CD_cmd_find_and_save_lost_objects
 
 //***************************************************************************
 
@@ -499,24 +535,19 @@ void T1CD_cmd_save_depot_config_part(T_1CD& base1CD, ParsedCommand& pc, Messenge
 int main(int argc, char* argv[])
 {
 	Messenger mess; // регистратор сообщений
-	int i;
-
-
 	String f, v;
-
-
 
 	bool ActionOpenBaseNotMonopolyChecked = false;
 	bool ActionXMLSaveBLOBToFileChecked   = false;
 	bool ActionXMLUnpackBLOBChecked       = true;
 
-	msreg = &mess;
+	msreg_g.AddMessageRegistrator(&mess);
 
 	CommandParse comm(argv, argc, &mess);
 
-	DynamicArray<ParsedCommand>& commands = comm.getcommands();
+	vector<ParsedCommand>& commands = comm.getcommands();
 
-	if(commands.get_length() == 0)
+	if(commands.size() == 0)
 	{
 		cout << "cTool_1CD (c) awa 2009 - 2017" << endl << "Запусти cTool_1CD -h для справки" << endl;
 		return 0;
@@ -525,31 +556,28 @@ int main(int argc, char* argv[])
 	mess.setlogfile("tool1cd.log");
 
 	// Первый цикл просмотра команд для определения ключей параметров
-	for(i = 0; i < commands.get_length(); i++)
-	{
-		ParsedCommand& pc = commands[i];
-		switch(pc.command)
-		{
-			case cmd_help:
+	for( const auto& pc: commands ) {
+		switch(pc.command) {
+			case Command::help:
 				cout << comm.gethelpstring() << endl;
 				return 0;
 				break;
-			case cmd_no_verbose:
+			case Command::no_verbose:
 				mess.setnoverbose(true);
 				break;
-			case cmd_quit:
+			case Command::quit:
 				//quit = true;
 				break;
-			case cmd_logfile:
+			case Command::logfile:
 				mess.setlogfile(pc.param1);
 				break;
-			case cmd_not_exclusively:
+			case Command::not_exclusively:
 				ActionOpenBaseNotMonopolyChecked = true;
 				break;
-			case cmd_xml_blob_to_file:
+			case Command::xml_blob_to_file:
 				ActionXMLSaveBLOBToFileChecked = IsTrueString(pc.param1);
 				break;
-			case cmd_xml_parse_blob:
+			case Command::xml_parse_blob:
 				ActionXMLUnpackBLOBChecked = IsTrueString(pc.param1);
 				break;
 		}
@@ -558,7 +586,7 @@ int main(int argc, char* argv[])
 	f = comm.getfilename();
 	if(f.IsEmpty())
 	{
-		mess.AddMessage("В командной строке не найден файл базы 1CD", msError);
+		mess.AddMessage("В командной строке не найден файл базы 1CD", MessageState::Error);
 		return CTOOL_1CD_INVALID_ARGUMENT;
 	}
 
@@ -566,14 +594,14 @@ int main(int argc, char* argv[])
 	dbpath = boost::filesystem::absolute(dbpath);
 	if (!boost::filesystem::exists(dbpath))
 	{
-		mess.AddMessage("Указанный файл базы 1CD не существует", msError);
+		mess.AddMessage("Указанный файл базы 1CD не существует", MessageState::Error);
 		return CTOOL_1CD_FILE_NOT_EXISTS;
 	}
 
 	T_1CD base1CD(dbpath.string(), &mess, !ActionOpenBaseNotMonopolyChecked);
 	if (base1CD.is_open())
 	{
-		mess.AddMessage_("База данных 1CD открыта", msSuccesfull,
+		mess.AddMessage_("База данных 1CD открыта", MessageState::Succesfull,
 			"Файл", dbpath.string(),
 			"Версия базы", base1CD.ver,
 			"Locale", base1CD.locale,
@@ -584,51 +612,51 @@ int main(int argc, char* argv[])
 		return CTOOL_1CD_FILE_NOT_OPEN;
 	}
 
-	for(i = 0; i < commands.get_length(); i++)
-	{
-		ParsedCommand& pc = commands[i];
-		try
-		{
-			switch(pc.command)
-			{
-				case cmd_export_all_to_xml: {
-					T1CD_cmd_export_all_to_xml(base1CD, pc, mess);
+	for( const auto& pc: commands )	{
+		try {
+			switch(pc.command) {
+				case Command::export_all_to_xml: {
+					T1CD_cmd_export_all_to_xml(base1CD, pc, mess, ActionXMLSaveBLOBToFileChecked, ActionXMLUnpackBLOBChecked);
 					break;
 				}
-				case cmd_export_to_xml: {
-					T1CD_cmd_export_to_xml(base1CD, pc, mess);
+				case Command::export_to_xml: {
+					T1CD_cmd_export_to_xml(base1CD, pc, mess, ActionXMLSaveBLOBToFileChecked, ActionXMLUnpackBLOBChecked);
 					break;
 				}
-				case cmd_save_config: {
+				case Command::save_config: {
 					T1CD_cmd_save_config(base1CD, pc, mess);
 					break;
 				}
-				case cmd_save_configsave: {
+				case Command::save_configsave: {
 					T1CD_cmd_save_configsave(base1CD, pc, mess);
 					break;
 				}
-				case cmd_save_vendors_configs: {
+				case Command::save_vendors_configs: {
 					T1CD_cmd_save_vendors_configs(base1CD, pc, mess);
 					break;
 				}
-				case cmd_save_all_configs: {
+				case Command::save_all_configs: {
 					T1CD_cmd_save_all_configs(base1CD, pc, mess);
 					break;
 				}
-				case cmd_save_depot_config: {
+				case Command::save_depot_config: {
 					T1CD_cmd_save_depot_config(base1CD, pc, mess);
 					break;
 				}
-				case cmd_save_depot_config_part:{
+				case Command::save_depot_config_part:{
 					T1CD_cmd_save_depot_config_part(base1CD, pc, mess);
 					break;
 				}
-				case cmd_export_to_binary: {
+				case Command::export_to_binary: {
 					T1CD_cmd_export_to_binary(base1CD, pc, mess);
 					break;
 				}
-				case cmd_import_from_binary: {
+				case Command::import_from_binary: {
 					T1CD_cmd_import_from_binary(base1CD, pc, mess);
+					break;
+				}
+				case Command::find_and_save_lost_objects: {
+					T1CD_cmd_find_and_save_lost_objects(base1CD, pc, mess);
 					break;
 				}
 			}

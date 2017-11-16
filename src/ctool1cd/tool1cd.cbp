@@ -11,7 +11,6 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-eax ~/dev-pro/testxml ~/dev-pro/1Cv8.1CD" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -46,28 +45,49 @@
 		<Unit filename="APIcfBase.h" />
 		<Unit filename="Base64.cpp" />
 		<Unit filename="Base64.h" />
+		<Unit filename="CRC32.cpp" />
+		<Unit filename="CRC32.h" />
 		<Unit filename="Class_1CD.cpp" />
 		<Unit filename="Class_1CD.h" />
 		<Unit filename="Common.cpp" />
 		<Unit filename="Common.h" />
 		<Unit filename="ConfigStorage.cpp" />
 		<Unit filename="ConfigStorage.h" />
+		<Unit filename="Constants.h" />
 		<Unit filename="DTshkaPCH1.h" />
 		<Unit filename="ErrorCode.h" />
+		<Unit filename="Field.cpp" />
+		<Unit filename="Field.h" />
+		<Unit filename="Index.cpp" />
+		<Unit filename="Index.h" />
+		<Unit filename="MemBlock.cpp" />
+		<Unit filename="MemBlock.h" />
 		<Unit filename="MessageRegistration.cpp" />
 		<Unit filename="MessageRegistration.h" />
 		<Unit filename="Messenger.cpp" />
 		<Unit filename="Messenger.h" />
 		<Unit filename="NodeTypes.h" />
+		<Unit filename="PackDirectory.cpp" />
+		<Unit filename="PackDirectory.h" />
+		<Unit filename="Packdata.cpp" />
+		<Unit filename="Packdata.h" />
 		<Unit filename="ParseCommandLine.cpp" />
 		<Unit filename="ParseCommandLine.h" />
 		<Unit filename="Parse_tree.cpp" />
 		<Unit filename="Parse_tree.h" />
 		<Unit filename="PrecompiledHeaders.h" />
+		<Unit filename="Table.cpp" />
+		<Unit filename="Table.h" />
+		<Unit filename="TableFileStream.cpp" />
+		<Unit filename="TableFileStream.h" />
+		<Unit filename="TableFiles.cpp" />
+		<Unit filename="TableFiles.h" />
 		<Unit filename="TempStream.cpp" />
 		<Unit filename="TempStream.h" />
 		<Unit filename="UZLib.cpp" />
 		<Unit filename="UZLib.h" />
+		<Unit filename="V8Object.cpp" />
+		<Unit filename="V8Object.h" />
 		<Unit filename="Zip.cpp" />
 		<Unit filename="Zip.h" />
 		<Unit filename="cTool_1CD_Main.cpp" />
@@ -78,7 +98,9 @@
 		<Extensions>
 			<code_completion />
 			<envvars />
-			<lib_finder disable_auto="1" />
+			<lib_finder disable_auto="1">
+				<lib name="zlib" />
+			</lib_finder>
 			<debugger />
 		</Extensions>
 	</Project>

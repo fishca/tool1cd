@@ -20,7 +20,7 @@ const int lsdynupdate = sdynupdate.Length();
 ConfigStorageDirectory::ConfigStorageDirectory(const String& _dir)
 {
 	fdir = _dir;
-	if(*fdir.LastChar() != '\\') fdir += '\\';
+	if(*fdir.LastChar() != '\\') fdir += '\\'; // FIXME: разобраться в конструкторе ConfigStorageDirectory - это работа с файловой системой?
 }
 
 //---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ ConfigFile* ConfigStorageDirectory::readfile(const String& path)
 	ConfigFile* cf;
 	String filename;
 
-	filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString();
+	filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString(); // FIXME: исправить чтение файла на boost::filesystem
 
 	if(FileExists(filename))
 	{
@@ -42,7 +42,7 @@ ConfigFile* ConfigStorageDirectory::readfile(const String& path)
 		}
 		catch(...)
 		{
-			// TODO Здесь надо бы что-нибудь сообщить об ошибке
+			// TODO: сообщить об ошибке и записать в log
 			delete cf;
 			return NULL;
 		}
@@ -55,7 +55,7 @@ ConfigFile* ConfigStorageDirectory::readfile(const String& path)
 //---------------------------------------------------------------------------
 bool ConfigStorageDirectory::writefile(const String& path, TStream* str)
 {
-	String filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString();
+	String filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString(); // FIXME: исправить запись файла на boost::filesystem
 	TFileStream* f = new TFileStream(filename, fmCreate);
 	f->CopyFrom(str, 0);
 	delete f;
@@ -73,7 +73,7 @@ String ConfigStorageDirectory::presentation()
 bool ConfigStorageDirectory::fileexists(const String& path)
 {
 	String filename;
-	filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString();
+	filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString(); // FIXME: исправить проверку существования файла на boost::filesystem
 	return FileExists(filename);
 }
 
@@ -196,7 +196,7 @@ container_file::container_file(table_file* _f, const String& _name)
 	stream  = NULL;
 	rstream = NULL;
 	cat     = NULL;
-	packed  = tfp_unknown;
+	packed  = table_file_packed::unknown;
 	dynno   = -3;
 }
 
@@ -229,11 +229,11 @@ bool container_file::open()
 	if(maxpartno > 0) stream = new TTempStream;
 	else stream = new TMemoryStream;
 
-	if(packed == tfp_unknown) packed = isPacked() ? tfp_yes : tfp_no;
+	if(packed == table_file_packed::unknown) packed = isPacked() ? table_file_packed::yes : table_file_packed::no;
 
 	if(rstream)
 	{
-		if(packed == tfp_yes) ts = rstream;
+		if(packed == table_file_packed::yes) ts = rstream;
 		else
 		{
 			stream = rstream;
@@ -243,7 +243,7 @@ bool container_file::open()
 	}
 	else
 	{
-		if(packed == tfp_yes)
+		if(packed == table_file_packed::yes)
 		{
 			if(maxpartno > 0) ts = new TTempStream;
 			else ts = new TMemoryStream;
@@ -253,7 +253,7 @@ bool container_file::open()
 		for(i = 0; i <= maxpartno; ++i) t->readBlob(ts, addr[i].blob_start, addr[i].blob_length, false);
 	}
 
-	if(packed == tfp_yes)
+	if(packed == table_file_packed::yes)
 	{
 		ts->Seek(0l, soBeginning);
 		ZInflateStream(ts, stream);
@@ -286,8 +286,8 @@ bool container_file::ropen()
 	t = file->t;
 	addr = file->addr;
 	maxpartno = file->maxpartno;
-	if(packed == tfp_unknown) packed = isPacked() ? tfp_yes : tfp_no;
-	if(packed == tfp_no && stream)
+	if(packed == table_file_packed::unknown) packed = isPacked() ? table_file_packed::yes : table_file_packed::no;
+	if(packed == table_file_packed::no && stream)
 	{
 		rstream = stream;
 		rstream->Seek(0l, soBeginning);
@@ -347,10 +347,10 @@ bool container_file::isPacked()
 // Структура дополнительных данных открытого файла класса ConfigStorageTable
 
 //---------------------------------------------------------------------------
-enum ConfigStorageTableAddinVariant
+enum class ConfigStorageTableAddinVariant
 {
-	cstav_container_file,
-	cstav_v8file
+	container_file,
+	v8file
 };
 
 //---------------------------------------------------------------------------
@@ -430,7 +430,7 @@ ConfigFile* ConfigStorageTable::readfile(const String& path)
 		if(!f->Open()) return NULL;
 		cf = new ConfigFile;
 		cfa = new ConfigStorageTable_addin;
-		cfa->variant = cstav_v8file;
+		cfa->variant = ConfigStorageTableAddinVariant::v8file;
 		cfa->f = f;
 		cf->str = f->get_stream();
 		cf->str->Seek(0l, soBeginning);
@@ -440,7 +440,7 @@ ConfigFile* ConfigStorageTable::readfile(const String& path)
 	{
 		cf = new ConfigFile;
 		cfa = new ConfigStorageTable_addin;
-		cfa->variant = cstav_container_file;
+		cfa->variant = ConfigStorageTableAddinVariant::container_file;
 		cfa->tf = tf;
 		cf->str = tf->stream;
 		cf->str->Seek(0l, soBeginning);
@@ -463,11 +463,11 @@ void ConfigStorageTable::close(ConfigFile* cf)
 	ConfigStorageTable_addin* cfa;
 
 	cfa = (ConfigStorageTable_addin*)cf->addin;
-	if(cfa->variant == cstav_container_file)
+	if(cfa->variant == ConfigStorageTableAddinVariant::container_file)
 	{
 		cfa->tf->close();
 	}
-	else if(cfa->variant == cstav_v8file)
+	else if(cfa->variant == ConfigStorageTableAddinVariant::v8file)
 	{
 		cfa->f->Close();
 	}
@@ -616,7 +616,7 @@ ConfigStorageTableConfig::ConfigStorageTableConfig(TableFiles* tabf, T_1CD* _bas
 					}
 					else
 					{
-						if(ct->get_type() != nd_number)
+						if(ct->get_type() != node_type::nd_number)
 						{
 							msreg_m.AddError("Ошибка разбора файла DynamicallyUpdated"
 								, "Путь", s);
@@ -843,7 +843,7 @@ ConfigStorageTableConfigSave::ConfigStorageTableConfigSave(TableFiles* tabc, Tab
 					}
 					else
 					{
-						if(ct->get_type() != nd_number)
+						if(ct->get_type() != node_type::nd_number)
 						{
 							msreg_m.AddError("Ошибка разбора файла DynamicallyUpdated"
 								, "Путь", s);
@@ -1064,7 +1064,7 @@ ConfigStorageTableConfigCas::ConfigStorageTableConfigCas(TableFiles* tabc, const
 			delete stream;
 			return;
 		}
-		if(ct->get_type() != nd_string)
+		if(ct->get_type() != node_type::nd_string)
 		{
 			msreg_m.AddError("Ошибка разбора файла configinfo"
 				, "Путь", s);
@@ -1083,7 +1083,7 @@ ConfigStorageTableConfigCas::ConfigStorageTableConfigCas(TableFiles* tabc, const
 			delete stream;
 			return;
 		}
-		if(ct->get_type() != nd_binary2)
+		if(ct->get_type() != node_type::nd_binary2)
 		{
 			msreg_m.AddError("Ошибка разбора файла configinfo"
 				, "Путь", s);
@@ -1255,7 +1255,7 @@ ConfigStorageTableConfigCasSave::ConfigStorageTableConfigCasSave(TableFiles* tab
 			delete stream;
 			return;
 		}
-		if(ct->get_type() != nd_string)
+		if(ct->get_type() != node_type::nd_string)
 		{
 			msreg_m.AddError("Ошибка разбора файла configinfo"
 				, "Путь", s);
@@ -1276,7 +1276,7 @@ ConfigStorageTableConfigCasSave::ConfigStorageTableConfigCasSave(TableFiles* tab
 			delete stream;
 			return;
 		}
-		if(ct->get_type() != nd_binary2)
+		if(ct->get_type() != node_type::nd_binary2)
 		{
 			msreg_m.AddError("Ошибка разбора файла configinfo"
 				, "Путь", s);

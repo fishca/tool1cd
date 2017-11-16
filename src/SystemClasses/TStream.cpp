@@ -18,7 +18,7 @@ size_t TStream::GetSize() const
 
 void TStream::SetSize(size_t NewSize)
 {
-	// TODO: TStream::SetSize
+	// TODO: реализовать TStream::SetSize
 	m_size = NewSize;
 }
 
@@ -82,13 +82,13 @@ size_t TStream::Read(System::DynamicArray<System::t::Byte> &Buffer, size_t Count
 	if (Buffer.size() < CountToRead) {
 		Buffer.resize(static_cast<unsigned int>(CountToRead)); 
 	}
-	Seek(0, soFromBeginning);
 	return Read(Buffer.data(), CountToRead);
 }
 
 size_t TStream::CopyFrom(TStream *Source, const size_t Count)
 {
 	if (Count == 0) {
+		Source->Seek(0, soFromBeginning);
 		auto data_size = Source->GetSize();
 		if (data_size != 0) {
 			return CopyFrom(Source, data_size);
@@ -178,7 +178,7 @@ size_t TWrapperStream::Read(void *Buffer, size_t Count)
 {
 	_stream->seekg(GetPosition(), std::ios_base::beg);
 	_stream->read((char*)Buffer, Count);
-	if (!*_stream) {
+	if (_stream->bad()) {
 		String err(std::strerror(errno));
 		std::cerr << err << std::endl;
 		throw Exception(err);
@@ -193,12 +193,12 @@ size_t TWrapperStream::Write(const void *Buffer, size_t Count)
 	_stream->seekp(GetPosition(), std::ios_base::beg);
 	_stream->write((char*)Buffer, Count);
 	_stream->flush();
-	if (!*_stream) {
+	if (_stream->bad()) {
 		String err(std::strerror(errno));
 		std::cerr << err << std::endl;
 		throw Exception(err);
 	}
-	
+
 	m_position += Count;
 	if (m_position > m_size) {
 		m_size = m_position;
