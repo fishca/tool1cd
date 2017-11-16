@@ -48,7 +48,7 @@ String::String(const char *src, int limit_size) : string(src, limit_size)
  *      @src        - входная строка
  *      @limit_size - лимит в размере
  */
-String::String(const DynamicArray<t::Byte> &bytes) : string(reinterpret_cast<const char *>(bytes.data()), bytes.size())
+String::String(const std::vector<t::Byte> &bytes) : string(reinterpret_cast<const char *>(bytes.data()), bytes.size())
 {
 }
 
@@ -59,13 +59,11 @@ String::String(const DynamicArray<t::Byte> &bytes) : string(reinterpret_cast<con
 String::String(const WCHART *w_src, int limit_size)
 {
 	// Костыль
-	DynamicArray<t::Byte> tmpdata;
+	std::vector<t::Byte> tmpdata;
 	const WCHART *p = w_src;
 	bool limit_exceeded = false;
 
-	if( limit_size > 0 && p != nullptr ) { 
-	// из-за этого выгрузка поломалась
-	//if (p != nullptr) {
+	if( limit_size > 0 && p != nullptr ) {
 
 		while ( !limit_exceeded && *p != '\0' ) {
 
@@ -82,6 +80,31 @@ String::String(const WCHART *w_src, int limit_size)
 	string tmp(SysUtils::TEncoding::Unicode->toUtf8(tmpdata));
 	append(tmp);
 }
+
+/** Конструктор (C strings).
+ *      @w_src        - входная строка
+ */
+String::String(const WCHART *w_src)
+{
+	// Костыль
+	std::vector<t::Byte> tmpdata;
+	const WCHART *p = w_src;
+
+	if( p != nullptr ) {
+
+		while ( *p != u'\0' ) {
+
+			tmpdata.push_back((uint16_t)(*p) & 0xFF);
+			tmpdata.push_back((uint16_t)(*p) >> 8);
+
+			++p;
+
+		}
+	}
+	string tmp(SysUtils::TEncoding::Unicode->toUtf8(tmpdata));
+	append(tmp);
+}
+
 
 String::String(int                value) : string(ToString(value)) {}
 String::String(unsigned int       value) : string(ToString(value)) {}
@@ -235,7 +258,7 @@ int String::Pos(const String &substr)
 	if (index == npos) {
 		return 0;
 	}
-	return index;
+	return index + 1;
 }
 
 /** Функция возвращает длину строки.
@@ -262,7 +285,7 @@ void String::SetLength(int NewLength)
  */
 int String::LastDelimiter(const String &delimiters) const
 {
-	return 0;
+	return 0; // TODO: реализовать функцию поиска последнего разделителя
 }
 
 /** Функция ищет вхождение последнего символа в строке.
