@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <malloc.h>
+#include <memory>
+
 #include "UZLib.h"
 
 //---------------------------------------------------------------------------
@@ -24,47 +26,11 @@ const int CHUNKSIZE = 16384;
 #	endif
 #endif
 
-/*
-void ZInflateStream_Old(TStream* src, TStream* dst)
-{
-	z_stream strm;
-	int ret;
-	uintmax_t srcSize;
-
-	unsigned char srcBuf[CHUNKSIZE] = {0};
-	unsigned char dstBuf[CHUNKSIZE] = {0};
-
-	strm.zalloc   = Z_NULL;
-	strm.zfree    = Z_NULL;
-	strm.opaque   = Z_NULL;
-	strm.avail_in = 0;
-	strm.next_in  = Z_NULL;
-
-	ret = inflateInit2(&strm, -MAX_WBITS);
-
-	srcSize = src->GetSize();
-
-	src->Read(srcBuf, srcSize);
-	strm.avail_in  = srcSize;
-	strm.avail_out = CHUNKSIZE;
-	strm.next_in   = srcBuf;
-	strm.next_out  = dstBuf;
-
-	ret = inflate(&strm, Z_NO_FLUSH);
-
-	(void)inflateEnd(&strm);
-
-	dst->Write(dstBuf, strm.total_out);
-
-}
-*/
-
 //---------------------------------------------------------------------------
 bool ZDeflateStream(TStream* src, TStream* dst)
 {
 	int ret, flush;
-	//unsigned have;
-	size_t have;
+	unsigned have;
 	z_stream strm;
 	unsigned char in[CHUNKSIZE];
 	unsigned char out[CHUNKSIZE];
@@ -86,7 +52,7 @@ bool ZDeflateStream(TStream* src, TStream* dst)
 		if (strm.avail_in == 0) {
 			return false;
 		}
-		/* TODO: Check error */
+		/* TODO: ZDeflateStream проверка ошибок */
 
 		flush = (strm.avail_in < CHUNKSIZE) ? Z_FINISH : Z_NO_FLUSH;
 		strm.next_in = in;
@@ -100,7 +66,7 @@ bool ZDeflateStream(TStream* src, TStream* dst)
 			assert(ret != Z_STREAM_ERROR);  // state not clobbered
 			have = CHUNKSIZE - strm.avail_out;
 
-			size_t data_written = dst->Write(out, have);
+			int data_written = dst->Write(out, have);
 
 			if (data_written < have) {
 				(void)deflateEnd(&strm);
@@ -123,7 +89,7 @@ void _ZInflateStream_(TStream* src, TStream* dst)
 {
 	z_stream strm;
 	int ret;
-	size_t srcSize;
+	uintmax_t srcSize;
 
 	unsigned have;
 
@@ -187,19 +153,15 @@ void _ZInflateStream_(TStream* src, TStream* dst)
 }
 
 //---------------------------------------------------------------------------
-bool ZInflateStream(TStream* src, TStream* dst)
+void ZInflateStream(TStream* src, TStream* dst)
 {
 	z_stream strm;
 	int ret;
-	//uintmax_t srcSize;
-
+	
 	unsigned have;
 
-	unsigned char *srcBuf;
-	unsigned char *dstBuf;
-
-	srcBuf = (unsigned char *)malloc(CHUNKSIZE);
-	dstBuf = (unsigned char *)malloc(CHUNKSIZE);
+	std::unique_ptr<unsigned char[]> srcBuf(new unsigned char[CHUNKSIZE]);
+	std::unique_ptr<unsigned char[]> dstBuf(new unsigned char[CHUNKSIZE]);
 
 	/* allocate inflate state */
 	strm.zalloc   = Z_NULL;
@@ -212,37 +174,38 @@ bool ZInflateStream(TStream* src, TStream* dst)
 
 	/* decompress until deflate stream ends or end of file */
 	do {
-		strm.avail_in = src->Read(static_cast<unsigned char *>(srcBuf), CHUNKSIZE);
+		
+		strm.avail_in = src->Read(srcBuf.get(), CHUNKSIZE);
 
 		if (strm.avail_in == 0) break;
 
-		strm.next_in = srcBuf;
+		strm.next_in = srcBuf.get();
 
 		/* run inflate() on input until output buffer not full */
 		do {
 			strm.avail_out = CHUNKSIZE;
-			strm.next_out = dstBuf;
+			strm.next_out = dstBuf.get();
 			ret = inflate(&strm, Z_NO_FLUSH);
 
 			switch (ret) {
-			case Z_NEED_DICT:
-			{
-				ret = Z_DATA_ERROR;     /* and fall through */
-				return false;
-			}
-			case Z_DATA_ERROR:
-			case Z_MEM_ERROR:
 			case Z_STREAM_ERROR:
-			{
 				(void)inflateEnd(&strm);
-				free(srcBuf);
-				free(dstBuf);
-				return false;
-			}
+				throw ZError( "The stream structure was inconsistent" );
+				break;
+			case Z_NEED_DICT:
+				ret = Z_DATA_ERROR;
+			case Z_DATA_ERROR:
+				(void)inflateEnd(&strm);
+				throw ZError( "Input data was corrupted" );
+				break;
+			case Z_MEM_ERROR:
+				(void)inflateEnd(&strm);
+				throw ZError( "Not enough memory" );
+				break;
 			}
 
 			have = CHUNKSIZE - strm.avail_out;
-			dst->Write(static_cast<unsigned char *>(dstBuf), have);
+			dst->Write(dstBuf.get(), have);
 
 		} while (strm.avail_out == 0);
 
@@ -252,9 +215,6 @@ bool ZInflateStream(TStream* src, TStream* dst)
 	/* clean up and return */
 	(void)inflateEnd(&strm);
 
-	free(srcBuf);
-	free(dstBuf);
-	return true;
 }
 
 

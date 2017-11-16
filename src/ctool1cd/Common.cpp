@@ -7,6 +7,7 @@
 #pragma package(smart_init)
 #endif
 
+const size_t GUID_LEN = 36;
 const wchar_t hexdecode[] = L"0123456789abcdef";
 
 //---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ unsigned int reverse_byte_order(unsigned int value)
 String GUIDas1C(const unsigned char* fr)
 {
 	int i, j;
-	WCHART buf[37];
+	WCHART buf[GUID_LEN+1];
 	WCHART sym;
 
 	j = 0;
@@ -93,14 +94,15 @@ String GUIDas1C(const unsigned char* fr)
 		buf[j++] = sym;
 	}
 	buf[j] = 0;
-	return String(buf);
+
+	return String(buf, GUID_LEN+1);
 }
 
 //---------------------------------------------------------------------------
 String GUIDasMS(const unsigned char* fr)
 {
 	int i, j;
-	WCHART buf[37];
+	WCHART buf[GUID_LEN+1];
 	WCHART sym;
 
 	j = 0;
@@ -154,8 +156,8 @@ String GUIDasMS(const unsigned char* fr)
 		buf[j++] = sym;
 	}
 	buf[j] = 0;
-	//return buf;
-	return ::String(buf, 37);
+
+	return String(buf, GUID_LEN+1);
 }
 
 //---------------------------------------------------------------------------
@@ -433,5 +435,26 @@ String hexstring(TStream* str)
 	}
 
 	return s;
+}
+
+//---------------------------------------------------------------------------
+String toXML(String in)
+{
+	return TStringBuilder(in)
+		.Replace("&", "&amp;")
+		->Replace("<", "&lt;")
+		->Replace(">", "&gt;")
+		->Replace("'", "&apos;")
+		->Replace("\"", "&quot;")
+		->ToString();
+}
+
+//---------------------------------------------------------------------------
+unsigned char from_hex_digit(char digit)
+{
+	if(digit >= '0' && digit <= '9') return digit - '0';
+	if(digit >= 'a' && digit <= 'f') return digit - 'a' + 10;
+	if(digit >= 'A' && digit <= 'F') return digit - 'A' + 10;
+	return 0;
 }
 

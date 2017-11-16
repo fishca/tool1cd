@@ -11,12 +11,12 @@ namespace Classes {
 TMemoryStream::TMemoryStream() {}
 TMemoryStream::~TMemoryStream() {}
 
-size_t TMemoryStream::GetSize() const
-{	
+int64_t TMemoryStream::GetSize() const
+{
 	return _data.size();
 }
 
-void TMemoryStream::SetSize(size_t NewSize)
+void TMemoryStream::SetSize(int64_t NewSize)
 {
 	_data.resize(NewSize);
 	m_size = NewSize;
@@ -25,9 +25,9 @@ void TMemoryStream::SetSize(size_t NewSize)
 	}
 }
 
-size_t TMemoryStream::Read(void *Buffer, size_t Count)
+int64_t TMemoryStream::Read(void *Buffer, int64_t Count)
 {
-	size_t toRead = Count;
+	int64_t toRead = Count;
 	if (_data.size() <= m_position + toRead) {
 		toRead = _data.size() - m_position;
 	}
@@ -39,7 +39,7 @@ size_t TMemoryStream::Read(void *Buffer, size_t Count)
 	return 0;
 }
 
-size_t TMemoryStream::Write(const void *Buffer, size_t Count)
+int64_t TMemoryStream::Write(const void *Buffer, int64_t Count)
 {
 	auto buf = reinterpret_cast<const t::Byte*>(Buffer);
 	EnsureSize(m_position + Count);
