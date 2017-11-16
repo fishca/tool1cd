@@ -18,9 +18,12 @@ bool FileExists(const String &filename)
 
 bool DirectoryExists(const String &filename)
 {
+	
 	bool fs_exists = boost::filesystem::exists(boost::filesystem::path(filename.c_str()));
 	bool fs_is_dir = boost::filesystem::is_directory(boost::filesystem::path(filename.c_str()));
+	
 	return fs_exists && fs_is_dir;
+
 }
 
 void DeleteFile(const String &filename)
