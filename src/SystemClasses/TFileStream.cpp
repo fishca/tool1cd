@@ -60,7 +60,7 @@ void TFileStream::Close()
 	_stream.reset();
 }
 
-size_t TFileStream::Read(void *Buffer, size_t Count)
+int64_t TFileStream::Read(void *Buffer, int64_t Count)
 {
 	Reopen();
 	return TWrapperStream::Read(Buffer, Count);
