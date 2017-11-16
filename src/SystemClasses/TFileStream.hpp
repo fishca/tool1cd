@@ -34,8 +34,8 @@ public:
 
 	virtual void Close();
 	virtual void Reopen();
-	virtual size_t Read(void *Buffer, size_t Count);
-	virtual size_t Write(const void *Buffer, size_t Count);
+	virtual int64_t Read(void *Buffer, int64_t Count);
+	virtual int64_t Write(const void *Buffer, int64_t Count);
 
 protected:
 	std::string filename;
