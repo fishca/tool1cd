@@ -12,3 +12,6 @@ Debug/*
 *.out
 .VS
 *.json
+.vs
+v15
+.vscode
