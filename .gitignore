@@ -12,3 +12,4 @@ Debug/*
 *.out
 
 /build/
+*.json
