@@ -2,7 +2,6 @@
 #ifndef Parse_treeH
 #define Parse_treeH
 
-#include <vcl.h>
 #pragma hdrstop
 
 #include "NodeTypes.h"

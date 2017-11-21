@@ -14,7 +14,24 @@
 #include "Table.h"
 
 //---------------------------------------------------------------------------
-// Класс таблицы контейнера файлов (CONFIG, CONFIGSAVE, PARAMS, FILES, CONFICAS, CONFICASSAVE)
+// Класс таблицы контейнера файлов (CONFIG, CONFIGSAVE, PARAMS, FILES, CONFIGCAS, CONFIGCASSAVE)
+// https://its.1c.ru/db/metod8dev#content:1798:hdoc
+// CONFIG        - (конфигурация базы данных)
+// CONFIGSAVE    - (сохраненная конфигурация)
+// CONFIGCAS     - (системное хранилище конфигураций расширений)
+// CONFIGCASSAVE - (сохраненное системное хранилище конфигураций расширений)
+// FILES         - (работа с хранилищем конфигурации, профайлы и т.п.)
+// PARAMS        - (служебные параметры информационной базы)
+//
+// Все они имеют одинаковый набор полей :
+//
+// FileName   - имя файла;
+// Creation   - момент времени создания файла;
+// Modified   - момент времени последней модификации файла;
+// Attributes - атрибуты файла;
+// DataSize   - длина файла в байтах;
+// BinaryData - данные, хранимые в файле.
+
 class TableFileStream : public TStream
 {
 private:
