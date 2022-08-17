@@ -321,6 +321,7 @@ void T1CD_cmd_save_configsave(T_1CD& base1CD, const ParsedCommand& pc, Messenger
 				return;
 			}
 			//cfpath /= "cf.cf"; // FIXME: заменить "cf.cf" константой
+
 			cfpath /= BASICCONFIG.c_str();
 		}
 		if (base1CD.save_configsave(cfpath.string()))
