@@ -5,7 +5,7 @@ obj/*
 build/*
 Debug/*
 x64/*
-
+*.user
 *.layout
 *.depend
 
