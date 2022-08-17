@@ -166,4 +166,7 @@ const String EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 const String SNAPSHOT_VER1 = "3721ca9e-a272-496b-a093-206ea7629574";
 const String SNAPSHOT_VER2 = "6fdfdf78-062a-46bb-8402-62145ae55764";
 
+// основная конфигурация
+const String BASICCONFIG = "cf.cf";
+
 #endif
