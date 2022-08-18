@@ -290,7 +290,8 @@ void T1CD_cmd_save_config(T_1CD& base1CD, const ParsedCommand& pc, Messenger& me
 			if (!directory_exists(cfpath, mess)) {
 				return;
 			}
-			cfpath /= "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
+			//cfpath /= "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
+			cfpath /= DBCONFIG.c_str(); // FIXME: заменить "dbcf.cf" константой
 		}
 		if (base1CD.save_config(cfpath.string()))
 		{
@@ -372,7 +373,8 @@ void T1CD_cmd_save_all_configs(T_1CD& base1CD, const ParsedCommand& pc, Messenge
 			return;
 		}
 
-		boost::filesystem::path dbpath = param_path / "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
+		//boost::filesystem::path dbpath = param_path / "dbcf.cf"; // FIXME: заменить "dbcf.cf" константой
+		boost::filesystem::path dbpath = param_path / DBCONFIG.c_str(); // FIXME: заменить "dbcf.cf" константой
 		if (base1CD.save_config(dbpath.string())) {
 			mess.AddMessage_("Сохранение конфигурации базы данных завершено.", MessageState::Succesfull, "Файл", dbpath.string());
 		}
@@ -380,7 +382,8 @@ void T1CD_cmd_save_all_configs(T_1CD& base1CD, const ParsedCommand& pc, Messenge
 			mess.AddMessage_("Не удалось сохранить конфигурацию базы данных.", MessageState::Error, "Файл", dbpath.string());
 		}
 
-		boost::filesystem::path cfpath = param_path / "cf.cf"; // FIXME: заменить "cf.cf" константой
+		//boost::filesystem::path cfpath = param_path / "cf.cf"; // FIXME: заменить "cf.cf" константой
+		boost::filesystem::path cfpath = param_path / BASICCONFIG.c_str(); // FIXME: заменить "cf.cf" константой
 		if (base1CD.save_configsave(cfpath.string())) {
 			mess.AddMessage_("Сохранение основной конфигурации завершено.", MessageState::Succesfull, "Файл", cfpath.string());
 		}
@@ -555,7 +558,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	mess.setlogfile("tool1cd.log");
+	mess.setlogfile("ctool1cd.log");
 
 	// Первый цикл просмотра команд для определения ключей параметров
 	for( const auto& pc: commands ) {

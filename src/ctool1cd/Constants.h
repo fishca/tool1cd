@@ -168,5 +168,6 @@ const String SNAPSHOT_VER2 = "6fdfdf78-062a-46bb-8402-62145ae55764";
 
 // основная конфигурация
 const String BASICCONFIG = "cf.cf";
+const String DBCONFIG = "dbcf.cf";
 
 #endif

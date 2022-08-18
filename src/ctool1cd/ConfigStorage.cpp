@@ -72,9 +72,12 @@ String ConfigStorageDirectory::presentation()
 //---------------------------------------------------------------------------
 bool ConfigStorageDirectory::fileexists(const String& path)
 {
-	String filename;
-	filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString(); // FIXME: исправить проверку существования файла на boost::filesystem
-	return FileExists(filename);
+	//String filename;
+	//filename = fdir + TStringBuilder(path).Replace('/', '\\')->ToString(); // FIXME: исправить проверку существования файла на boost::filesystem
+	//return FileExists(filename);
+
+	return boost::filesystem::exists((fdir + TStringBuilder(path).Replace('/', '\\')->ToString()).c_str());
+
 }
 
 
